@@ -86,6 +86,10 @@ impl Display for IPv4 {
 }
 
 impl IPv4 {
+    pub fn to_short_string(&self) -> String {
+        format!("{} → {} | {}b of {}", self.source_address, self.destination_address, self.data.len(), self.protocol)
+    }
+
     pub fn parse(buf: &mut &[u8]) -> Option<IPv4> {
         let byte = read_u8(buf)?;
         let version: U4 = byte >> 4;

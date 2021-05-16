@@ -8,6 +8,7 @@ pub enum Protocol {
     ICMP,
     IPv4,
     TCP,
+    UDP,
     IPv6,
     Other(u8),
 }
@@ -19,6 +20,7 @@ impl Protocol {
             1 => Protocol::ICMP,
             4 => Protocol::IPv4,
             6 => Protocol::TCP,
+            17 => Protocol::UDP,
             41 => Protocol::IPv6,
             v => Protocol::Other(v),
         }
@@ -32,6 +34,7 @@ impl Display for Protocol {
             Protocol::ICMP => write!(f, "(ICMP) Internet Control Message"),
             Protocol::IPv4 => write!(f, "(IPv4) IPv4 encapsulation"),
             Protocol::TCP => write!(f, "(TCP) Transmission Control"),
+            Protocol::UDP => write!(f, "(UDP) User Datagram"),
             Protocol::IPv6 => write!(f, "(IPv6) IPv6 encapsulation"),
             Protocol::Other(v) => write!(f, "Other ({})", v),
         }

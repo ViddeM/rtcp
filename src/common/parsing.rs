@@ -2,6 +2,7 @@ pub type U1 = u8;
 pub type U2 = u8;
 pub type U3 = u8;
 pub type U4 = u8;
+pub type U6 = u8;
 pub type U13 = u16;
 pub type U24 = u32;
 
