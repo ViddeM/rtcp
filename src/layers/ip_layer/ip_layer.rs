@@ -6,6 +6,8 @@ use std::fmt::{Display, Formatter};
 use crate::common::formatting::indent_string;
 use crate::layers::ip_layer::ip_flags::Flags;
 use crate::layers::ip_layer::ip_protocol::Protocol;
+use crate::layers::transport::transport_layer::TransportLayer;
+use crate::layers::transport::tcp::tcp::TCP;
 
 #[derive(Clone, Debug)]
 pub enum IPLayerProtocol {
@@ -46,7 +48,7 @@ pub struct IPv4 {
     pub source_address: IPAddress,
     pub destination_address: IPAddress,
     pub options_and_padding: Vec<u8>,
-    pub data: Vec<u8>,
+    pub data: TransportLayer,
 }
 
 impl Display for IPv4 {
@@ -67,6 +69,7 @@ impl Display for IPv4 {
     source_address: {},
     destination_address: {},
     options_and_Padding: {:?},
+    data: {},
 }}",
             self.version,
             self.internet_header_length,
@@ -81,13 +84,15 @@ impl Display for IPv4 {
             self.source_address,
             self.destination_address,
             self.options_and_padding,
+            indent_string(self.data.to_string()),
         )
     }
 }
 
 impl IPv4 {
     pub fn to_short_string(&self) -> String {
-        format!("{} → {} | {}b of {}", self.source_address, self.destination_address, self.data.len(), self.protocol)
+        format!("{} → {} | {} :: {}", self.source_address, self.destination_address, self.protocol,
+                self.data)
     }
 
     pub fn parse(buf: &mut &[u8]) -> Option<IPv4> {
@@ -116,6 +121,7 @@ impl IPv4 {
         let data_length;
 
         let fragment_offset: U13;
+        let protocol: Protocol;
 
         Some(IPv4 {
             version: {
@@ -177,7 +183,8 @@ impl IPv4 {
             },
             protocol: {
                 remaining_header -= 8;
-                Protocol::parse(read_u8(buf)?)
+                protocol = Protocol::parse(read_u8(buf)?);
+                protocol.clone()
             },
             header_checksum: {
                 remaining_header -= 16;
@@ -194,7 +201,12 @@ impl IPv4 {
                 IPAddress(val)
             },
             options_and_padding: read_vec(buf, remaining_header as usize)?,
-            data: read_vec(buf, data_length as usize)?,
+            data: {
+                match protocol {
+                    Protocol::TCP => TransportLayer::TCP(TCP::parse(buf)?),
+                    other => TransportLayer::Other(read_vec(buf, data_length as usize)?),
+                }
+            },
         })
     }
 }

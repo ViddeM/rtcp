@@ -25,23 +25,26 @@ impl ControlBits {
     }
 }
 
+const DELIMITER: &str = " | ";
 impl Display for ControlBits {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut bits = String::from(
-                (if self.urg { "URG\n" } else { ""}).to_owned() +
-                (if self.ack { "ACK\n" } else { ""}) +
-                (if self.psh { "PSH\n" } else { ""}) +
-                (if self.rst { "RST\n" } else { ""}) +
-                (if self.syn { "SYN\n" } else { ""}) +
-                (if self.fin { "FIN\n" } else { ""})
-        );
+        let mut flags = Vec::new();
 
-        if bits.ends_with("\n") {
-            bits.remove(bits.len() - 1);
+        if self.urg {flags.push("URG")}
+        if self.ack {flags.push("ACK")}
+        if self.psh {flags.push("PSH")}
+        if self.rst {flags.push("RST")}
+        if self.syn {flags.push("SYN")}
+        if self.fin {flags.push("FIN")}
+
+        let mut bits = String::new();
+        for (index, flag) in flags.iter().enumerate() {
+            bits += flag;
+            if index < flags.len() - 1 {
+                bits += DELIMITER
+            }
         }
 
-        write!(f, "Control Bits: {{
-    {}
-}}", bits)
+        write!(f, "{{{}}}", bits)
     }
 }
