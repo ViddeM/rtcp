@@ -25,6 +25,10 @@ pub struct TCP {
 const TCP_MIN_HEADER_LENGTH: U4 = 5;
 
 impl TCP {
+    pub fn to_short_string(&self) -> String {
+        format!(":{} → :{} [{}] {}b", self.src_port, self.dst_port, self.control_bits.to_short_string(), self.data.len())
+    }
+
     pub fn parse(buf: &mut &[u8]) -> Option<TCP> {
         let offset_reserved_control_bits;
         let data_offset: U4;

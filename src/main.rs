@@ -11,13 +11,14 @@ fn main() {
     let mut buf = [0u8; 1504];
 
     loop {
+        // If n_bytes == 1504 we need to append more data before sending it onwards.
         let n_bytes = nic.recv(&mut buf[..]).expect("failed to receive");
         if let Some(tun_layer) = parse_tun_layer(&mut &buf[..n_bytes]) {
-            println!("Parsed: {}", tun_layer);
-            // match tun_layer.data {
-            //     IPLayerProtocol::IPv4(v) => println!("IPv4: {}", v.to_short_string()),
-            //     IPLayerProtocol::Other(_) => println!("Unsupported protocol: {}", tun_layer.proto)
-            // }
+            // println!("Parsed: {}", tun_layer);
+            match tun_layer.data {
+                IPLayerProtocol::IPv4(v) => println!("IPv4: {}", v.to_short_string()),
+                IPLayerProtocol::Other(_) => println!("Unsupported protocol: {}", tun_layer.proto)
+            }
         }
     }
 }

@@ -16,3 +16,12 @@ impl Display for TransportLayer {
         }
     }
 }
+
+impl TransportLayer {
+    pub fn to_short_string(&self) -> String {
+        match self {
+            TransportLayer::TCP(tcp) => tcp.to_short_string(),
+            TransportLayer::Other(d) => format!("{}b {:?}", d.len(), d),
+        }
+    }
+}
