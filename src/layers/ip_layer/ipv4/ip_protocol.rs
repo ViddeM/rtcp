@@ -25,6 +25,18 @@ impl Protocol {
             v => Protocol::Other(v),
         }
     }
+
+    pub fn serialize(&self) -> u8 {
+        match self {
+            Protocol::HOPOPT => 0,
+            Protocol::ICMP => 1,
+            Protocol::IPv4 => 4,
+            Protocol::TCP => 6,
+            Protocol::UDP => 17,
+            Protocol::IPv6 => 41,
+            Protocol::Other(v) => v.clone(),
+        }
+    }
 }
 
 impl Display for Protocol {

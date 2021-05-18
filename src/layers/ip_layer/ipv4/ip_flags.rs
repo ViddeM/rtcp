@@ -27,6 +27,10 @@ impl Flags {
             mf: MF::parse(num)?,
         })
     }
+
+    pub fn serialize(&self) -> U3 {
+         0 | (self.df.serialize() << 1) | self.mf.serialize()
+    }
 }
 
 impl Default for Flags {
@@ -55,7 +59,7 @@ impl Display for DF {
 }
 
 impl DF {
-    fn parse(num: U3) -> Option<DF> {
+    fn parse(num: U1) -> Option<DF> {
         Some(match (num & 0b010) >> 1 {
             0 => DF::MayFragment,
             1 => DF::DontFragment,
@@ -64,6 +68,13 @@ impl DF {
                 return None
             },
         })
+    }
+
+    fn serialize(&self) -> U1 {
+        match self {
+            DF::MayFragment => 0,
+            DF::DontFragment => 1,
+        }
     }
 }
 
@@ -92,5 +103,12 @@ impl MF {
                 return None
             },
         })
+    }
+
+    fn serialize(&self) -> U1 {
+        match self {
+            MF::LastFragment => 0,
+            MF::MoreFragments => 1,
+        }
     }
 }

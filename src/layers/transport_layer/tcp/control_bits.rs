@@ -3,6 +3,12 @@ use std::fmt::{Display, Formatter};
 use std::fmt;
 
 const DELIMITER: &str = ", ";
+const URG_BIT: u8 = 0b00100000;
+const ACK_BIT: u8 = 0b00010000;
+const PSH_BIT: u8 = 0b00001000;
+const RST_BIT: u8 = 0b00000100;
+const SYN_BIT: u8 = 0b00000010;
+const FIN_BIT: u8 = 0b00000001;
 
 #[derive(Clone, Debug)]
 pub struct ControlBits {
@@ -44,13 +50,24 @@ impl ControlBits {
 
     pub fn parse(num: U6) -> ControlBits {
         ControlBits {
-            urg: (num & 0b00100000) >> 5 == 1,
-            ack: (num & 0b00010000) >> 4 == 1,
-            psh: (num & 0b00001000) >> 3 == 1,
-            rst: (num & 0b00000100) >> 2 == 1,
-            syn: (num & 0b00000010) >> 1 == 1,
-            fin: num & 0b00000001 == 1,
+            urg: (num & URG_BIT) >> 5 == 1,
+            ack: (num & ACK_BIT) >> 4 == 1,
+            psh: (num & PSH_BIT) >> 3 == 1,
+            rst: (num & RST_BIT) >> 2 == 1,
+            syn: (num & SYN_BIT) >> 1 == 1,
+            fin: num & FIN_BIT == 1,
         }
+    }
+
+    pub fn serialize(&self) -> U6 {
+        let mut num = 0;
+        if self.urg { num = num | URG_BIT }
+        if self.ack { num = num | ACK_BIT }
+        if self.psh { num = num | PSH_BIT }
+        if self.rst { num = num | RST_BIT }
+        if self.syn { num = num | SYN_BIT }
+        if self.fin { num = num | FIN_BIT }
+        return num
     }
 
     pub fn get_syn() -> ControlBits {

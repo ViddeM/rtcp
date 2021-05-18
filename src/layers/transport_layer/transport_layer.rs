@@ -1,4 +1,4 @@
-use crate::layers::transport::tcp::tcp::TCP;
+use crate::layers::transport_layer::tcp::tcp::TCP;
 use std::fmt::{Display, Formatter};
 use std::fmt;
 
@@ -22,6 +22,13 @@ impl TransportLayer {
         match self {
             TransportLayer::TCP(tcp) => tcp.to_short_string(),
             TransportLayer::Other(d) => format!("{}b {:?}", d.len(), d),
+        }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        match self {
+            TransportLayer::TCP(tcp) => tcp.serialize(),
+            TransportLayer::Other(data) => data.to_vec(),
         }
     }
 }

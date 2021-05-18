@@ -1,14 +1,16 @@
-use crate::layers::transport::tcp::tcb::{TCB, SendSequence, ReceiveSequence};
-use crate::layers::transport::tcp::tcp::TCP;
-use crate::layers::transport::tcp::tcp_error::TcpError;
-use crate::layers::transport::tcp::states::tcp_state::TcpState;
-use crate::layers::transport::tcp::control_bits::ControlBits;
+use crate::layers::transport_layer::tcp::tcb::{TCB};
+use crate::layers::transport_layer::tcp::tcp::TCP;
+use crate::layers::transport_layer::tcp::tcp_error::TcpError;
+use crate::layers::transport_layer::tcp::states::tcp_state::TcpState;
+use crate::layers::transport_layer::tcp::control_bits::ControlBits;
+use crate::layers::transport_layer::tcp::send_sequence::SendSequence;
+use crate::layers::transport_layer::tcp::receive_sequence::ReceiveSequence;
 
 /// Handle an incoming TCP segment when the connection is in the LISTEN STATE
 /// Returns a Result containing either, a tuple containing
 /// the new TCB for the connection as well as the TCP response; or a TcpError.
 pub fn handle_listen_receive(tcb: &TCB, segment: &TCP) -> Result<(TCB, TCP), TcpError>{
-    if !tcp.control_bits.syn {
+    if !segment.control_bits.syn {
         return Err(TcpError::UnexpectedConnection)
     }
 

@@ -25,6 +25,41 @@ impl Display for TunLayer {
     }
 }
 
+impl TunLayer {
+    pub fn parse(buf: &mut &[u8]) -> Option<TunLayer> {
+        let proto: Protocol;
+        Some(TunLayer {
+            flags: read_u16(buf)?,
+            proto: {
+                proto = Protocol::parse(read_u16(buf)?);
+                proto.clone()
+            },
+            data: {
+                match proto {
+                    Protocol::IPv4 => IPLayerProtocol::parse(buf),
+                    _ => IPLayerProtocol::Other(buf.to_vec()),
+                }
+            },
+        })
+    }
+    
+    pub fn generate_response(ip_layer: IPLayerProtocol) -> TunLayer {
+        TunLayer {
+            flags: 0,
+            proto: Protocol::IPv4,
+            data: ip_layer,
+        }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&self.flags.to_be_bytes());
+        bytes.extend_from_slice(&self.proto.serialize().to_be_bytes());
+        bytes.extend_from_slice(&self.data.serialize());
+        bytes
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Protocol {
     IPv4,
@@ -54,35 +89,41 @@ impl fmt::Display for Protocol {
     }
 }
 
+const PROTO_IPV4: u16 = 0x0800;
+const PROTO_ARP: u16 = 0x0806;
+const PROTO_WAKE_ON_LAN: u16 = 0x0842;
+const PROTO_APPLE_TALK: u16 = 0x809B;
+const PROTO_AARP: u16 = 0x80F3;
+const PROTO_SLPP: u16 = 0x8102;
+const PROTO_IPV6: u16 = 0x86DD;
+const PROTO_ETHERNET_FLOW_CONTROL: u16 = 0x8808;
+
 impl Protocol {
     fn parse(num: u16) -> Protocol {
         match num {
-            0x0800 => Protocol::IPv4,
-            0x0806 => Protocol::ARP,
-            0x0842 => Protocol::WakeOnLAN,
-            0x809B => Protocol::AppleTalk,
-            0x80F3 => Protocol::AARP,
-            0x8102 => Protocol::SLPP,
-            0x86DD => Protocol::IPv6,
-            0x8808 => Protocol::EthernetFlowControl,
+            PROTO_IPV4 => Protocol::IPv4,
+            PROTO_ARP => Protocol::ARP,
+            PROTO_WAKE_ON_LAN => Protocol::WakeOnLAN,
+            PROTO_APPLE_TALK => Protocol::AppleTalk,
+            PROTO_AARP => Protocol::AARP,
+            PROTO_SLPP => Protocol::SLPP,
+            PROTO_IPV6 => Protocol::IPv6,
+            PROTO_ETHERNET_FLOW_CONTROL => Protocol::EthernetFlowControl,
             val => Protocol::Unknown(val),
         }
     }
-}
 
-pub fn parse_tun_layer(buf: &mut &[u8]) -> Option<TunLayer> {
-    let proto: Protocol;
-    Some(TunLayer {
-        flags: read_u16(buf)?,
-        proto: {
-            proto = Protocol::parse(read_u16(buf)?);
-            proto.clone()
-        },
-        data: {
-            match proto {
-                Protocol::IPv4 => IPLayerProtocol::parse(buf),
-                _ => IPLayerProtocol::Other(buf.to_vec()),
-            }
-        },
-    })
+    fn serialize(&self) -> u16 {
+        match self {
+            Protocol::IPv4 => PROTO_IPV4,
+            Protocol::ARP => PROTO_ARP,
+            Protocol::WakeOnLAN => PROTO_WAKE_ON_LAN,
+            Protocol::AppleTalk => PROTO_APPLE_TALK,
+            Protocol::AARP => PROTO_AARP,
+            Protocol::SLPP => PROTO_SLPP,
+            Protocol::IPv6 => PROTO_IPV6,
+            Protocol::EthernetFlowControl => PROTO_ETHERNET_FLOW_CONTROL,
+            Protocol::Unknown(v) => v.clone(),
+        }
+    }
 }

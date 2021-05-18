@@ -1,13 +1,19 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Hash)]
 pub struct IPAddress(pub u32);
 
 impl Display for IPAddress {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let bytes = self.get_bytes();
         write!(f, "{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3])
+    }
+}
+
+impl PartialEq for IPAddress {
+    fn eq(&self, other: &Self) -> bool {
+        return self.0 == other.0
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::common::parsing::U2;
+use crate::common::parsing::{U2, U3, U1};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -36,6 +36,14 @@ impl TypeOfService {
             reliability: Reliability::parse(num)?,
             reserved: num & 0b00000011,
         })
+    }
+
+    pub fn serialize(&self) -> u8 {
+        let mut num = self.precedence.serialize() << 5;
+        num |= self.delay.serialize() << 4;
+        num |= self.throughput.serialize() << 3;
+        num |= self.reliability.serialize() << 2;
+        num
     }
 }
 
@@ -79,7 +87,7 @@ impl Display for Precedence {
 }
 
 impl Precedence {
-    fn parse(num: u8) -> Option<Precedence> {
+    fn parse(num: U3) -> Option<Precedence> {
         let val = (num & 0b11100000) >> 5;
         Some(match val {
             0b111 => Precedence::NetworkControl,
@@ -95,6 +103,19 @@ impl Precedence {
                 return None;
             }
         })
+    }
+
+    fn serialize(&self) -> U3 {
+        match self {
+            Precedence::NetworkControl => 0b111,
+            Precedence::InternetworkControl => 0b110,
+            Precedence::CriticECP => 0b101,
+            Precedence::FlashOverride => 0b100,
+            Precedence::Flash => 0b011,
+            Precedence::Immediate => 0b010,
+            Precedence::Priority => 0b001,
+            Precedence::Routine => 0b000,
+        }
     }
 }
 
@@ -125,6 +146,13 @@ impl Delay {
             }
         })
     }
+
+    fn serialize(&self) -> U1 {
+        match self {
+            Delay::Normal => 0b1,
+            Delay::Low =>  0b0
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -154,6 +182,13 @@ impl Throughput {
             }
         })
     }
+
+    fn serialize(&self) -> U1 {
+        match self {
+            Throughput::High => 0b1,
+            Throughput::Normal => 0b0,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -182,5 +217,12 @@ impl Reliability {
                 return None;
             }
         })
+    }
+
+    fn serialize(&self) -> U1 {
+        match self {
+            Reliability::High => 0b1,
+            Reliability::Normal => 0b0,
+        }
     }
 }

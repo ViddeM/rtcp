@@ -2,7 +2,7 @@ use crate::common::parsing::{U4, U6, read_u16, read_u32, read_vec};
 use std::fmt::{Display, Formatter};
 use std::fmt;
 use crate::common::formatting::indent_string;
-use crate::layers::transport::tcp::control_bits::ControlBits;
+use crate::layers::transport_layer::tcp::control_bits::ControlBits;
 
 #[derive(Clone, Debug)]
 pub struct TCP {
@@ -54,6 +54,22 @@ impl TCP {
             options: read_vec(buf, (data_offset - TCP_MIN_HEADER_LENGTH) as usize)?,
             data: buf.to_vec(),
         })
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes: Vec<u8> = Vec::new();
+        bytes.extend_from_slice(&self.src_port.to_be_bytes());
+        bytes.extend_from_slice(&self.dst_port.to_be_bytes());
+        bytes.extend_from_slice(&self.sequence_number.to_be_bytes());
+        bytes.extend_from_slice(&self.acknowledgement_number.to_be_bytes());
+        bytes.extend_from_slice(&(0 | ((self.data_offset as u16) << 12) | (self.control_bits.serialize() as u16)).to_be_bytes());
+        bytes.extend_from_slice(&self.window.to_be_bytes());
+        bytes.extend_from_slice(&self.checksum.to_be_bytes());
+        bytes.extend_from_slice(&self.urgent_pointer.to_be_bytes());
+        // TODO: Add options / padding
+        bytes.extend_from_slice(self.data.as_slice());
+
+        bytes
     }
 
     pub fn add_checksum(mut self) -> TCP {
