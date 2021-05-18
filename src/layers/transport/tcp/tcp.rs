@@ -55,6 +55,12 @@ impl TCP {
             data: buf.to_vec(),
         })
     }
+
+    pub fn add_checksum(mut self) -> TCP {
+        // TODO: Implement
+        self.checksum = 0xFFFF;
+        return self
+    }
 }
 
 impl Display for TCP {

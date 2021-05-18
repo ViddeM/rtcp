@@ -1,6 +1,6 @@
 use crate::common::parsing::{read_u16, read_u32, read_u8, read_vec, U13, U3, U4};
 use crate::layers::ip_layer::ip_address::IPAddress;
-use crate::layers::ip_layer::type_of_service::TypeOfService;
+use crate::layers::ip_layer::type_of_service::{TypeOfService, Precedence};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use crate::common::formatting::indent_string;
@@ -207,5 +207,27 @@ impl IPv4 {
                 }
             },
         })
+    }
+    
+    pub fn generate_response(data: TransportLayer) -> IPv4 {
+        IPv4 {
+            version: 4,
+            internet_header_length: 5, // TODO: Account for options and padding
+            type_of_service: TypeOfService::default(),
+            total_length: 20 + match data { // TODO: Account for options and padding
+                TransportLayer::TCP(tcp) => tcp.data_offset + tcp.data.len(),
+                TransportLayer::Other(data) => data.len() as u16,
+            },
+            identification: 0, // TODO: Use
+            flags: Flags::default(),
+            fragment_offset: 0,
+            time_to_live: 0, //
+            protocol: Protocol::HOPOPT,
+            header_checksum: 0,
+            source_address: IPAddress(),
+            destination_address: IPAddress(),
+            options_and_padding: vec![],
+            data: ()
+        }
     }
 }

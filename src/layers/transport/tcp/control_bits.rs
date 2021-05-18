@@ -6,12 +6,12 @@ const DELIMITER: &str = ", ";
 
 #[derive(Clone, Debug)]
 pub struct ControlBits {
-    urg: bool,
-    ack: bool,
-    psh: bool,
-    rst: bool,
-    syn: bool,
-    fin: bool,
+    pub urg: bool,
+    pub ack: bool,
+    pub psh: bool,
+    pub rst: bool,
+    pub syn: bool,
+    pub fin: bool,
 }
 
 impl ControlBits {
@@ -50,6 +50,28 @@ impl ControlBits {
             rst: (num & 0b00000100) >> 2 == 1,
             syn: (num & 0b00000010) >> 1 == 1,
             fin: num & 0b00000001 == 1,
+        }
+    }
+
+    pub fn get_syn() -> ControlBits {
+        ControlBits {
+            urg: false,
+            ack: false,
+            psh: false,
+            rst: false,
+            syn: true,
+            fin: false
+        }
+    }
+
+    pub fn get_syn_ack() -> ControlBits {
+        ControlBits {
+            urg: false,
+            ack: true,
+            psh: false,
+            rst: false,
+            syn: true,
+            fin: false
         }
     }
 }

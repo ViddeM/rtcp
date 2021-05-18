@@ -29,6 +29,16 @@ impl Flags {
     }
 }
 
+impl Default for Flags {
+    fn default() -> Self {
+        Flags {
+            reserved: 0,
+            df: DF::DontFragment,
+            mf: MF::LastFragment,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum DF {
     MayFragment,

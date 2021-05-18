@@ -39,6 +39,18 @@ impl TypeOfService {
     }
 }
 
+impl Default for TypeOfService {
+    fn default() -> Self {
+        TypeOfService {
+            precedence: Precedence::Routine,
+            delay: Delay::Normal,
+            throughput: Throughput::Normal,
+            reliability: Reliability::Normal,
+            reserved: 0
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Precedence {
     NetworkControl,
