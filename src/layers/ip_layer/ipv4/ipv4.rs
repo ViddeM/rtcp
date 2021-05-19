@@ -10,6 +10,7 @@ use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
 use crate::common::formatting::indent_string;
 use crate::layers::transport_layer::tcp::tcp::TCP;
 use crate::common::response_error::ResponseError;
+use crate::common::arithmetics::calculate_ones_complement_sum;
 
 #[derive(Clone, Debug)]
 pub struct IPv4 {
@@ -222,7 +223,25 @@ impl IPv4 {
         })
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
+    pub fn calculate_checksum(&self) -> u16 {
+        let mut numbers: Vec<u16> = Vec::new();
+        numbers.push(((self.version as u16) << 12) | ((self.internet_header_length as u16) << 8) | self.type_of_service.serialize() as u16);
+        numbers.push(self.total_length);
+        numbers.push(self.identification);
+        numbers.push(((self.flags.serialize() as u16) << 13) | self.fragment_offset);
+        numbers.push(((self.time_to_live as u16) << 8) | (self.protocol.serialize() as u16));
+        numbers.push(0 as u16); // Checksum should be 0 for the purpose of the checksum calculation.
+        numbers.push((self.source_address.0 >> 16) as u16);
+        numbers.push(self.source_address.0 as u16);
+        numbers.push((self.destination_address.0 >> 16) as u16);
+        numbers.push(self.destination_address.0 as u16);
+        // TODO: Support options
+        // TODO: Add data
+
+        return calculate_ones_complement_sum(numbers)
+    }
+
+    pub fn serialize(&self) -> Result<Vec<u8>, ResponseError> {
         let mut bytes = Vec::new();
         let mut first_byte: u8 = (4 << 4) | 5; // Version 4, header length 5 * 32 bit. TODO: Maybe not hardcoded?
         bytes.push(first_byte);
@@ -232,11 +251,11 @@ impl IPv4 {
         bytes.extend_from_slice(&(((self.flags.serialize() as u16) << 13) | self.fragment_offset).to_be_bytes());
         bytes.push(self.time_to_live);
         bytes.push(self.protocol.serialize());
-        bytes.extend_from_slice(&self.header_checksum.to_be_bytes());
+        bytes.extend_from_slice(&self.calculate_checksum().to_be_bytes());
         bytes.extend_from_slice(&self.source_address.0.to_be_bytes());
         bytes.extend_from_slice(&self.destination_address.0.to_be_bytes());
         // TODO: Options / Padding
-        bytes.extend_from_slice(self.data.serialize().as_slice());
-        bytes
+        bytes.extend_from_slice(self.data.serialize(&self.source_address, &self.destination_address)?.as_slice());
+        Ok(bytes)
     }
 }

@@ -7,11 +7,36 @@ use crate::layers::transport_layer::transport_layer::TransportLayer;
 use crate::layers::tun_layer::tun_layer::{TunLayer};
 use crate::layers::ip_layer::ip_layer::IPLayerProtocol;
 use std::io::Error;
+use crate::common::arithmetics::calculate_ones_complement_sum;
 
 mod common;
 mod layers;
 
 fn main() {
+    // let nums: Vec<u16> = vec![
+    //     0xc0a8, // IPv4 source addr.
+    //     0x0002,
+    //
+    //     0xc0a8, // IPv4 dst addr
+    //     0x0001,
+    //
+    //     0x0000, // Zero
+    //     0x0006, // ?? Protocol?
+    //     0x0014, // Length
+    //
+    //     0x0bd6,
+    //     0xbb6a,
+    //     0xec94,
+    //     0x68fa,
+    //     0x2799,
+    //     0xe9d8,
+    //     0x5012,
+    //     0xfaf0,
+    //     0x0000,
+    //     0x0000,
+    // ];
+    // println!("Checksum: {:04x}", calculate_ones_complement_sum(nums));
+
     let mut connections: HashMap<TCPQuad, TCB> = HashMap::new();
 
     let nic = Iface::new("rtcp_tun0", tun_tap::Mode::Tun).expect("failed to setup tun_tap");
@@ -57,7 +82,13 @@ fn main() {
                                 }
                             };
 
-                            let mut serialized = resp.serialize();
+                            let mut serialized = match resp.serialize() {
+                                Ok(val) => val,
+                                Err(e) => {
+                                    eprintln!("Failed to serialize data for send: {}", e);
+                                    continue;
+                                }
+                            };
                             if let Some(v) = TunLayer::parse(&mut serialized.as_slice()) {
                                 if let IPLayerProtocol::IPv4(ipv4) = v.data {
                                     println!("Responding with: {}", ipv4.to_short_string());

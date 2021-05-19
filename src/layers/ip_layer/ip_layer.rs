@@ -1,6 +1,7 @@
 use crate::layers::ip_layer::ipv4::ipv4::IPv4;
 use std::fmt::{Display, Formatter};
 use std::fmt;
+use crate::common::response_error::ResponseError;
 
 #[derive(Clone, Debug)]
 pub enum IPLayerProtocol {
@@ -25,10 +26,10 @@ impl IPLayerProtocol {
         }
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
+    pub fn serialize(&self) -> Result<Vec<u8>, ResponseError> {
         match self {
             IPLayerProtocol::IPv4(ipv4) => ipv4.serialize(),
-            IPLayerProtocol::Other(data) => data.to_vec(),
+            IPLayerProtocol::Other(data) => Ok(data.to_vec()),
         }
     }
 }

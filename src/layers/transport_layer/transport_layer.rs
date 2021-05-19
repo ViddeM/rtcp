@@ -4,6 +4,7 @@ use std::fmt;
 use crate::common::response_error::ResponseError;
 use std::ops::Mul;
 use std::convert::TryInto;
+use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
 
 #[derive(Clone, Debug)]
 pub enum TransportLayer {
@@ -28,11 +29,11 @@ impl TransportLayer {
         }
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
-        match self {
-            TransportLayer::TCP(tcp) => tcp.serialize(),
+    pub fn serialize(&self, src_adr: &IPAddress, dst_adr: &IPAddress) -> Result<Vec<u8>, ResponseError> {
+        Ok(match self {
+            TransportLayer::TCP(tcp) => tcp.serialize(src_adr, dst_adr)?,
             TransportLayer::Other(data) => data.to_vec(),
-        }
+        })
     }
 
     pub fn len(&self) -> Result<u16, ResponseError> {

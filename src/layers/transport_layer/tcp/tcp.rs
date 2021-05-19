@@ -4,6 +4,9 @@ use std::fmt;
 use crate::common::formatting::indent_string;
 use crate::layers::transport_layer::tcp::control_bits::ControlBits;
 use crate::common::response_error::ResponseError;
+use crate::common::arithmetics::calculate_ones_complement_sum;
+use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
+use crate::layers::ip_layer::ipv4::ip_protocol::Protocol;
 
 #[derive(Clone, Debug)]
 pub struct TCP {
@@ -57,7 +60,7 @@ impl TCP {
         })
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
+    pub fn serialize(&self, src_adr: &IPAddress, dst_adr: &IPAddress) -> Result<Vec<u8>, ResponseError> {
         let mut bytes: Vec<u8> = Vec::new();
         bytes.extend_from_slice(&self.src_port.to_be_bytes());
         bytes.extend_from_slice(&self.dst_port.to_be_bytes());
@@ -65,7 +68,7 @@ impl TCP {
         bytes.extend_from_slice(&self.acknowledgement_number.to_be_bytes());
         bytes.extend_from_slice(&(0 | ((self.data_offset as u16) << 12) | (self.control_bits.serialize() as u16)).to_be_bytes());
         bytes.extend_from_slice(&self.window.to_be_bytes());
-        bytes.extend_from_slice(&self.checksum.to_be_bytes());
+        bytes.extend_from_slice(&self.calculate_checksum(src_adr, dst_adr)?.to_be_bytes());
         bytes.extend_from_slice(&self.urgent_pointer.to_be_bytes());
         // TODO: Add options / padding
         bytes.extend_from_slice(&self.options);
@@ -73,9 +76,10 @@ impl TCP {
 
         bytes.extend_from_slice(self.data.as_slice());
 
-        bytes
+        Ok(bytes)
     }
 
+    // Calculates the full length of this TCP packet, i.e. Header + Data
     pub fn len(&self) -> Result<u16, ResponseError> {
         let header_len = (self.data_offset as u16)
             .checked_mul(4) // Convert no 32bit words to no bytes.
@@ -89,10 +93,43 @@ impl TCP {
             .ok_or(ResponseError::DataTooLarge)
     }
 
-    pub fn add_checksum(mut self) -> TCP {
-        // TODO: Implement
-        self.checksum = 0xFFFF;
-        return self
+    pub fn calculate_checksum(&self, src_adr: &IPAddress, dst_adr: &IPAddress) -> Result<u16, ResponseError> {
+        let mut num: Vec<u16> = Vec::new();
+
+        // 96 bit Pseudo header
+        num.push((src_adr.0 >> 16) as u16);
+        num.push(src_adr.0 as u16);
+        num.push((dst_adr.0 >> 16) as u16);
+        num.push(dst_adr.0 as u16);
+        num.push(0 as u16); // Zeros
+        num.push(Protocol::TCP.serialize() as u16); // Protocol
+        num.push(self.len()?); // Full length
+
+        // Actual data for checksum
+        num.push(self.src_port);
+        num.push(self.dst_port);
+        num.push((self.sequence_number >> 16) as u16);
+        num.push(self.sequence_number as u16);
+        num.push((self.acknowledgement_number >> 16) as u16);
+        num.push(self.acknowledgement_number as u16);
+        num.push(((self.data_offset as u16) << 12) | (self.reserved << 6) as u16 | self.control_bits.serialize() as u16);
+        num.push(self.window);
+        num.push(0 as u16);
+        num.push(self.urgent_pointer);
+        // TODO: Support options/padding
+
+        for (index, val) in self.data.iter().enumerate() {
+            if index % 2 == 0 {
+                let next_num: u8 = if index < self.data.len() - 1 {
+                    self.data[index + 1]
+                } else {
+                    0 // If our data is not an even number of 16-bit words we need to pad it with 0s.
+                };
+                num.push(((val.clone() as u16) << 8) | next_num as u16);
+            }
+        }
+
+        Ok(calculate_ones_complement_sum(num))
     }
 }
 

@@ -3,6 +3,7 @@ use crate::layers::ip_layer::ip_layer::IPLayerProtocol;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use crate::common::formatting::indent_string;
+use crate::common::response_error::ResponseError;
 
 #[derive(Clone, Debug)]
 pub struct TunLayer {
@@ -51,12 +52,12 @@ impl TunLayer {
         }
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
+    pub fn serialize(&self) -> Result<Vec<u8>, ResponseError> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&self.flags.to_be_bytes());
         bytes.extend_from_slice(&self.proto.serialize().to_be_bytes());
-        bytes.extend_from_slice(&self.data.serialize());
-        bytes
+        bytes.extend_from_slice(&self.data.serialize()?);
+        Ok(bytes)
     }
 }
 

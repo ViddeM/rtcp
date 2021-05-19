@@ -20,9 +20,8 @@ pub struct TCB {
 impl TCB {
     pub fn on_packet_received(&self, tcp: &TCP) -> Result<(TCB, TCP), TcpError> {
         match &self.state {
-            TcpState::Listen => {
-                handle_listen_receive(self, tcp)
-            }
+            TcpState::Listen => handle_listen_receive(self, tcp),
+            TcpState::SynReceived => handle_syn_received(self, tcp),
             state => Err(TcpError::NotSupported(state.to_string())),
         }
     }

@@ -1,20 +1,11 @@
-use crate::layers::transport_layer::tcp::tcb::{TCB};
+use crate::layers::transport_layer::tcp::tcb::TCB;
 use crate::layers::transport_layer::tcp::tcp::TCP;
 use crate::layers::transport_layer::tcp::tcp_error::TcpError;
-use crate::layers::transport_layer::tcp::states::tcp_state::TcpState;
-use crate::layers::transport_layer::tcp::control_bits::ControlBits;
 use crate::layers::transport_layer::tcp::send_sequence::SendSequence;
-use crate::layers::transport_layer::tcp::receive_sequence::ReceiveSequence;
 
-// const OPTIONS_DATA: [u8; 20] = [0x02, 0x04, 0xff, 0xd7,
-//     0x04, 0x02, 0x08, 0x0a, 0xa5, 0xa3, 0x30, 0xed,
-//     0xa5, 0xa3, 0x30, 0xed, 0x01, 0x03, 0x03, 0x07];
-
-/// Handle an incoming TCP segment when the connection is in the LISTEN STATE
-/// Returns a Result containing either, a tuple containing
-/// the new TCB for the connection as well as the TCP response; or a TcpError.
-pub fn handle_listen_receive(tcb: &TCB, segment: &TCP) -> Result<(TCB, TCP), TcpError>{
-    if !segment.control_bits.syn {
+pub fn handle_syn_received_receive(tcb: &TCB, segment: &TCP) -> Result<(TCB, TCP), TcpError>{
+    if !segment.control_bits.ack {
+        eprintln!("Missing ack flag");
         return Err(TcpError::UnexpectedConnection)
     }
 
