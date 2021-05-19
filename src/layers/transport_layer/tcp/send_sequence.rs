@@ -1,5 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[derive(Clone, Debug)]
 pub struct SendSequence {
     pub unacknowledged: u32,
     pub next: u32,

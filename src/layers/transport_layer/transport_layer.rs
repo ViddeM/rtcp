@@ -25,7 +25,7 @@ impl TransportLayer {
     pub fn to_short_string(&self) -> String {
         match self {
             TransportLayer::TCP(tcp) => tcp.to_short_string(),
-            TransportLayer::Other(d) => format!("{}b {:?}", d.len(), d),
+            TransportLayer::Other(d) => format!("{}b", d.len()),
         }
     }
 
@@ -39,7 +39,6 @@ impl TransportLayer {
     pub fn len(&self) -> Result<u16, ResponseError> {
         Ok(match &self {
             TransportLayer::TCP(tcp) => {
-                println!("TCP LEN: {}", tcp.len()?);
                 tcp.len()?
             },
             TransportLayer::Other(data) => data.len() as u16

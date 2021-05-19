@@ -8,35 +8,13 @@ use crate::layers::tun_layer::tun_layer::{TunLayer};
 use crate::layers::ip_layer::ip_layer::IPLayerProtocol;
 use std::io::Error;
 use crate::common::arithmetics::calculate_ones_complement_sum;
+use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
+use crate::layers::transport_layer::tcp::tcp::TCP;
 
 mod common;
 mod layers;
 
 fn main() {
-    // let nums: Vec<u16> = vec![
-    //     0xc0a8, // IPv4 source addr.
-    //     0x0002,
-    //
-    //     0xc0a8, // IPv4 dst addr
-    //     0x0001,
-    //
-    //     0x0000, // Zero
-    //     0x0006, // ?? Protocol?
-    //     0x0014, // Length
-    //
-    //     0x0bd6,
-    //     0xbb6a,
-    //     0xec94,
-    //     0x68fa,
-    //     0x2799,
-    //     0xe9d8,
-    //     0x5012,
-    //     0xfaf0,
-    //     0x0000,
-    //     0x0000,
-    // ];
-    // println!("Checksum: {:04x}", calculate_ones_complement_sum(nums));
-
     let mut connections: HashMap<TCPQuad, TCB> = HashMap::new();
 
     let nic = Iface::new("rtcp_tun0", tun_tap::Mode::Tun).expect("failed to setup tun_tap");
@@ -60,46 +38,77 @@ fn main() {
                                 dst_port: tcp.dst_port,
                             };
 
-                            let (tcb, tcp) = match connections.entry(quad.clone())
-                                .or_default().on_packet_received(tcp) {
+                            let result = match connections
+                                .entry(quad.clone())
+                                .or_default()
+                                .on_packet_received(tcp) {
                                 Ok(v) => v,
                                 Err(e) => {
-                                    println!("Failed to handle packet: {}", e);
+                                    eprintln!("Failed to handle packet: {}", e);
                                     continue;
                                 }
                             };
+
+                            let tcb: TCB;
+                            let tcp_opt: Option<TCP>;
+
+                            match result {
+                                TCPStateChange::WithResponse(new_tcb, new_tcp) => {
+                                    tcb = new_tcb;
+                                    tcp_opt = Some(new_tcp);
+                                }
+                                TCPStateChange::NoResponse(new_tcb) => {
+                                    tcb = new_tcb;
+                                    tcp_opt = None;
+                                }
+                            }
+
+                            println!("Now in state: {}", tcb.state);
+
+                            // TODO: Remove
+                            let data = tcb.receive_buffer.clone();
+                            let len = data.len();
+                            if len > 0 {
+                                println!("{} bytes of data in receive buffer: {}",
+                                    len, String::from_utf8(data).unwrap(),
+                                );
+                            }
 
                             connections.insert(
                                 quad,
                                 tcb,
                             );
 
-                            let resp = match ipv4.generate_response(TransportLayer::TCP(tcp)) {
-                                Ok(val) => TunLayer::generate_response(IPLayerProtocol::IPv4(val)),
-                                Err(e) => {
-                                    eprintln!("failed to generate ipv4 response: {}", e);
-                                    continue;
-                                }
-                            };
+                            // Does this warrant a response?
+                            if let Some(tcp) = tcp_opt {
+                                let resp = match ipv4.generate_response(TransportLayer::TCP(tcp)) {
+                                    Ok(val) => TunLayer::generate_response(IPLayerProtocol::IPv4(val)),
+                                    Err(e) => {
+                                        eprintln!("failed to generate ipv4 response: {}", e);
+                                        continue;
+                                    }
+                                };
 
-                            let mut serialized = match resp.serialize() {
-                                Ok(val) => val,
-                                Err(e) => {
-                                    eprintln!("Failed to serialize data for send: {}", e);
-                                    continue;
-                                }
-                            };
-                            if let Some(v) = TunLayer::parse(&mut serialized.as_slice()) {
-                                if let IPLayerProtocol::IPv4(ipv4) = v.data {
-                                    println!("Responding with: {}", ipv4.to_short_string());
-                                }
-                            }
+                                let mut serialized = match resp.serialize() {
+                                    Ok(val) => val,
+                                    Err(e) => {
+                                        eprintln!("Failed to serialize data for send: {}", e);
+                                        continue;
+                                    }
+                                };
 
-                            // println!("bytes to send: {:x?}", serialized);
+                                if let Some(v) = TunLayer::parse(&mut serialized.as_slice()) {
+                                    if let IPLayerProtocol::IPv4(ipv4) = v.data {
+                                        println!("Responding with: {}", ipv4.to_short_string());
+                                    }
+                                }
 
-                            match nic.send(serialized.as_slice()) {
-                                Ok(v) => println!("successfully responded with {}b", v),
-                                Err(e) => println!("failed to send response: {}", e),
+                                // println!("bytes to send: {:x?}", serialized);
+
+                                match nic.send(serialized.as_slice()) {
+                                    Ok(v) => println!("successfully responded with {}b", v),
+                                    Err(e) => println!("failed to send response: {}", e),
+                                }
                             }
                         }
                         _ => {}

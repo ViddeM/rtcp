@@ -78,7 +78,8 @@ impl Display for ResponseError {
 
 impl IPv4 {
     pub fn to_short_string(&self) -> String {
-        format!("{} → {} | {} :: {}", self.source_address, self.destination_address, self.protocol, self.data.to_short_string())
+        format!("{} → {} | {} :: {}", self.source_address, self.destination_address,
+                self.protocol, self.data.to_short_string())
     }
 
     pub fn parse(buf: &mut &[u8]) -> Option<IPv4> {

@@ -91,6 +91,17 @@ impl ControlBits {
             fin: false
         }
     }
+
+    pub fn get_ack() -> ControlBits {
+        ControlBits {
+            urg: false,
+            ack: true,
+            psh: false,
+            rst: false,
+            syn: false,
+            fin: false
+        }
+    }
 }
 
 impl Display for ControlBits {
