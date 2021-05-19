@@ -68,7 +68,6 @@ impl TCP {
         bytes.extend_from_slice(&self.checksum.to_be_bytes());
         bytes.extend_from_slice(&self.urgent_pointer.to_be_bytes());
         // TODO: Add options / padding
-        // TMP options...
         bytes.extend_from_slice(&self.options);
 
 

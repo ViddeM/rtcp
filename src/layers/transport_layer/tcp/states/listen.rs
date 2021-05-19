@@ -6,9 +6,9 @@ use crate::layers::transport_layer::tcp::control_bits::ControlBits;
 use crate::layers::transport_layer::tcp::send_sequence::SendSequence;
 use crate::layers::transport_layer::tcp::receive_sequence::ReceiveSequence;
 
-const OPTIONS_DATA: [u8; 20] = [0x02, 0x04, 0xff, 0xd7,
-    0x04, 0x02, 0x08, 0x0a, 0xa5, 0xa3, 0x30, 0xed,
-    0xa5, 0xa3, 0x30, 0xed, 0x01, 0x03, 0x03, 0x07];
+// const OPTIONS_DATA: [u8; 20] = [0x02, 0x04, 0xff, 0xd7,
+//     0x04, 0x02, 0x08, 0x0a, 0xa5, 0xa3, 0x30, 0xed,
+//     0xa5, 0xa3, 0x30, 0xed, 0x01, 0x03, 0x03, 0x07];
 
 /// Handle an incoming TCP segment when the connection is in the LISTEN STATE
 /// Returns a Result containing either, a tuple containing
@@ -33,7 +33,7 @@ pub fn handle_listen_receive(tcb: &TCB, segment: &TCP) -> Result<(TCB, TCP), Tcp
         state: TcpState::SynReceived
     };
 
-    let options = OPTIONS_DATA;
+    let options = vec![];
 
     let response_segment = TCP {
         src_port: segment.dst_port,
@@ -46,7 +46,7 @@ pub fn handle_listen_receive(tcb: &TCB, segment: &TCP) -> Result<(TCB, TCP), Tcp
         window: new_tcb.receive_sequence.window,
         checksum: 0,
         urgent_pointer: 0,
-        options: Vec::from(options),
+        options,
         data: vec![]
     };
 

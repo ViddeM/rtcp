@@ -149,8 +149,8 @@ impl Delay {
 
     fn serialize(&self) -> U1 {
         match self {
-            Delay::Normal => 0b1,
-            Delay::Low =>  0b0
+            Delay::Normal => 0b0,
+            Delay::Low =>  0b1,
         }
     }
 }

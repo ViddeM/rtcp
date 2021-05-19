@@ -59,10 +59,12 @@ fn main() {
 
                             let mut serialized = resp.serialize();
                             if let Some(v) = TunLayer::parse(&mut serialized.as_slice()) {
-                                println!("Serialized -> Deserialized: {}", v);
+                                if let IPLayerProtocol::IPv4(ipv4) = v.data {
+                                    println!("Responding with: {}", ipv4.to_short_string());
+                                }
                             }
 
-                            println!("bytes to send: {:x?}", serialized);
+                            // println!("bytes to send: {:x?}", serialized);
 
                             match nic.send(serialized.as_slice()) {
                                 Ok(v) => println!("successfully responded with {}b", v),

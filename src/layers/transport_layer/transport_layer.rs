@@ -38,6 +38,7 @@ impl TransportLayer {
     pub fn len(&self) -> Result<u16, ResponseError> {
         Ok(match &self {
             TransportLayer::TCP(tcp) => {
+                println!("TCP LEN: {}", tcp.len()?);
                 tcp.len()?
             },
             TransportLayer::Other(data) => data.len() as u16
