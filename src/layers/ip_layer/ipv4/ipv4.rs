@@ -9,6 +9,7 @@ use crate::layers::ip_layer::ipv4::ip_flags::Flags;
 use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
 use crate::common::formatting::indent_string;
 use crate::layers::transport_layer::tcp::tcp::TCP;
+use crate::common::response_error::ResponseError;
 
 #[derive(Clone, Debug)]
 pub struct IPv4 {
@@ -66,14 +67,10 @@ impl Display for IPv4 {
     }
 }
 
-pub enum IPv4Error {
-    DataTooLarge,
-}
-
-impl Display for IPv4Error {
+impl Display for ResponseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            IPv4Error::DataTooLarge => write!(f, "data too large for packet!"),
+            ResponseError::DataTooLarge => write!(f, "data too large for packet!"),
         }
     }
 }
@@ -105,6 +102,7 @@ impl IPv4 {
             }
             Some(v) => v,
         };
+
         let total_header_length = remaining_header;
         let data_length;
 
@@ -198,6 +196,32 @@ impl IPv4 {
         })
     }
 
+    pub fn generate_response(self, data: TransportLayer) -> Result<IPv4, ResponseError> {
+        let internet_header_length: U4 = 5; // TODO: Account for options and padding
+        let total_length: u16 = (4 as u16)
+            .checked_mul(internet_header_length as u16) // Header length
+            .ok_or(ResponseError::DataTooLarge)?
+            .checked_add(data.len()?) // Add the data length
+            .ok_or(ResponseError::DataTooLarge)?;
+
+        Ok(IPv4 {
+            version: 4,
+            internet_header_length: 5, // TODO: Account for options and padding
+            type_of_service: TypeOfService::default(),
+            total_length,
+            identification: 0, // TODO: Implement
+            flags: Flags::default(),
+            fragment_offset: 0,
+            time_to_live: 0b00111100, // As set out in the TCP RFC.
+            protocol: Protocol::TCP,
+            header_checksum: 0, // TODO: Calculate
+            source_address: self.destination_address,
+            destination_address: self.source_address,
+            options_and_padding: vec![], // TODO: lol
+            data,
+        })
+    }
+
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         let mut first_byte: u8 = (4 << 4) | 5; // Version 4, header length 5 * 32 bit. TODO: Maybe not hardcoded?
@@ -214,35 +238,5 @@ impl IPv4 {
         // TODO: Options / Padding
         bytes.extend_from_slice(self.data.serialize().as_slice());
         bytes
-    }
-
-    pub fn generate_response(self, data: TransportLayer) -> Result<IPv4, IPv4Error> {
-        let internet_header_length: U4 = 5;
-        let total_length: u16 = (4 as u16)
-            .checked_mul(internet_header_length as u16)
-            .ok_or(IPv4Error::DataTooLarge)?;
-
-        Ok(IPv4 {
-            version: 4,
-            internet_header_length: 5, // TODO: Account for options and padding
-            type_of_service: TypeOfService::default(),
-            total_length: total_length
-                .checked_add(match &data { // TODO: Account for options and padding
-                    TransportLayer::TCP(tcp) => (tcp.data_offset as u16)
-                        .checked_add(tcp.data.len() as u16)
-                        .ok_or(IPv4Error::DataTooLarge)?,
-                    TransportLayer::Other(data) => data.len() as u16,
-                }).ok_or(IPv4Error::DataTooLarge)?,
-            identification: 0, // TODO: Implement
-            flags: Flags::default(),
-            fragment_offset: 0,
-            time_to_live: 0b00111100, // As set out in the TCP RFC.
-            protocol: Protocol::TCP,
-            header_checksum: 0, // TODO: Calculate
-            source_address: self.destination_address,
-            destination_address: self.source_address,
-            options_and_padding: vec![], // TODO: lol
-            data,
-        })
     }
 }

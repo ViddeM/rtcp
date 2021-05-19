@@ -1,6 +1,9 @@
 use crate::layers::transport_layer::tcp::tcp::TCP;
 use std::fmt::{Display, Formatter};
 use std::fmt;
+use crate::common::response_error::ResponseError;
+use std::ops::Mul;
+use std::convert::TryInto;
 
 #[derive(Clone, Debug)]
 pub enum TransportLayer {
@@ -30,5 +33,14 @@ impl TransportLayer {
             TransportLayer::TCP(tcp) => tcp.serialize(),
             TransportLayer::Other(data) => data.to_vec(),
         }
+    }
+
+    pub fn len(&self) -> Result<u16, ResponseError> {
+        Ok(match &self {
+            TransportLayer::TCP(tcp) => {
+                tcp.len()?
+            },
+            TransportLayer::Other(data) => data.len() as u16
+        })
     }
 }

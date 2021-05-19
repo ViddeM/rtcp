@@ -6,7 +6,6 @@ use crate::layers::transport_layer::tcp::tcp_ip_port_quad::TCPQuad;
 use crate::layers::transport_layer::transport_layer::TransportLayer;
 use crate::layers::tun_layer::tun_layer::{TunLayer};
 use crate::layers::ip_layer::ip_layer::IPLayerProtocol;
-use crate::layers::ip_layer::ipv4::ipv4::{IPv4, IPv4Error};
 use std::io::Error;
 
 mod common;
@@ -63,7 +62,7 @@ fn main() {
                                 println!("Serialized -> Deserialized: {}", v);
                             }
 
-                            println!("bytes to send: {:?}", serialized);
+                            println!("bytes to send: {:x?}", serialized);
 
                             match nic.send(serialized.as_slice()) {
                                 Ok(v) => println!("successfully responded with {}b", v),

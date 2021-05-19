@@ -6,6 +6,10 @@ use crate::layers::transport_layer::tcp::control_bits::ControlBits;
 use crate::layers::transport_layer::tcp::send_sequence::SendSequence;
 use crate::layers::transport_layer::tcp::receive_sequence::ReceiveSequence;
 
+const OPTIONS_DATA: [u8; 20] = [0x02, 0x04, 0xff, 0xd7,
+    0x04, 0x02, 0x08, 0x0a, 0xa5, 0xa3, 0x30, 0xed,
+    0xa5, 0xa3, 0x30, 0xed, 0x01, 0x03, 0x03, 0x07];
+
 /// Handle an incoming TCP segment when the connection is in the LISTEN STATE
 /// Returns a Result containing either, a tuple containing
 /// the new TCB for the connection as well as the TCP response; or a TcpError.
@@ -29,18 +33,20 @@ pub fn handle_listen_receive(tcb: &TCB, segment: &TCP) -> Result<(TCB, TCP), Tcp
         state: TcpState::SynReceived
     };
 
+    let options = OPTIONS_DATA;
+
     let response_segment = TCP {
         src_port: segment.dst_port,
         dst_port: segment.src_port,
         sequence_number: new_tcb.send_sequence.next,
         acknowledgement_number: new_tcb.receive_sequence.next,
-        data_offset: 5,
+        data_offset: 5 + (options.len() as u8), // + 5 for Hardcoded options.
         reserved: 0,
-        control_bits: ControlBits::get_syn(),
+        control_bits: ControlBits::get_syn_ack(),
         window: new_tcb.receive_sequence.window,
         checksum: 0,
         urgent_pointer: 0,
-        options: vec![],
+        options: Vec::from(options),
         data: vec![]
     };
 

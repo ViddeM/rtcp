@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 use std::fmt;
 use crate::common::formatting::indent_string;
 use crate::layers::transport_layer::tcp::control_bits::ControlBits;
+use crate::common::response_error::ResponseError;
 
 #[derive(Clone, Debug)]
 pub struct TCP {
@@ -67,9 +68,26 @@ impl TCP {
         bytes.extend_from_slice(&self.checksum.to_be_bytes());
         bytes.extend_from_slice(&self.urgent_pointer.to_be_bytes());
         // TODO: Add options / padding
+        // TMP options...
+        bytes.extend_from_slice(&self.options);
+
+
         bytes.extend_from_slice(self.data.as_slice());
 
         bytes
+    }
+
+    pub fn len(&self) -> Result<u16, ResponseError> {
+        let header_len = (self.data_offset as u16)
+            .checked_mul(4) // Convert no 32bit words to no bytes.
+            .ok_or(ResponseError::DataTooLarge)?
+            + (self.options.len() as u16);
+
+        let data_len = self.data.len() as u16;
+
+        header_len
+            .checked_add(data_len)
+            .ok_or(ResponseError::DataTooLarge)
     }
 
     pub fn add_checksum(mut self) -> TCP {
