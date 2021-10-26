@@ -1,12 +1,12 @@
-use crate::common::parsing::{U4, U6, read_u16, read_u32, read_vec};
-use std::fmt::{Display, Formatter};
-use std::fmt;
-use crate::common::formatting::indent_string;
-use crate::layers::transport_layer::tcp::control_bits::ControlBits;
-use crate::common::response_error::ResponseError;
 use crate::common::arithmetics::calculate_ones_complement_sum;
+use crate::common::formatting::indent_string;
+use crate::common::parsing::{read_u16, read_u32, read_vec, U4, U6};
+use crate::common::response_error::ResponseError;
 use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
 use crate::layers::ip_layer::ipv4::ip_protocol::Protocol;
+use crate::layers::transport_layer::tcp::control_bits::ControlBits;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug)]
 pub struct TCP {
@@ -21,7 +21,7 @@ pub struct TCP {
     pub checksum: u16,
     pub urgent_pointer: u16,
     pub options: Vec<u8>,
-    pub data: Vec<u8>
+    pub data: Vec<u8>,
 }
 
 // The minimum length (measured in 32-bit segments) of the TCP header,
@@ -30,7 +30,13 @@ const TCP_MIN_HEADER_LENGTH: U4 = 5;
 
 impl TCP {
     pub fn to_short_string(&self) -> String {
-        format!(":{} → :{} [{}] {}b", self.src_port, self.dst_port, self.control_bits.to_short_string(), self.data.len())
+        format!(
+            ":{} → :{} [{}] {}b",
+            self.src_port,
+            self.dst_port,
+            self.control_bits.to_short_string(),
+            self.data.len()
+        )
     }
 
     pub fn parse(buf: &mut &[u8]) -> Option<TCP> {
@@ -45,8 +51,11 @@ impl TCP {
                 offset_reserved_control_bits = read_u16(buf)?;
                 data_offset = ((offset_reserved_control_bits & 0xF000) >> 12) as U4;
                 if data_offset < TCP_MIN_HEADER_LENGTH {
-                    eprintln!("Invalid data_offset number: {} < {}", data_offset, TCP_MIN_HEADER_LENGTH);
-                    return None
+                    eprintln!(
+                        "Invalid data_offset number: {} < {}",
+                        data_offset, TCP_MIN_HEADER_LENGTH
+                    );
+                    return None;
                 }
                 data_offset
             },
@@ -60,19 +69,25 @@ impl TCP {
         })
     }
 
-    pub fn serialize(&self, src_adr: &IPAddress, dst_adr: &IPAddress) -> Result<Vec<u8>, ResponseError> {
+    pub fn serialize(
+        &self,
+        src_adr: &IPAddress,
+        dst_adr: &IPAddress,
+    ) -> Result<Vec<u8>, ResponseError> {
         let mut bytes: Vec<u8> = Vec::new();
         bytes.extend_from_slice(&self.src_port.to_be_bytes());
         bytes.extend_from_slice(&self.dst_port.to_be_bytes());
         bytes.extend_from_slice(&self.sequence_number.to_be_bytes());
         bytes.extend_from_slice(&self.acknowledgement_number.to_be_bytes());
-        bytes.extend_from_slice(&(0 | ((self.data_offset as u16) << 12) | (self.control_bits.serialize() as u16)).to_be_bytes());
+        bytes.extend_from_slice(
+            &(0 | ((self.data_offset as u16) << 12) | (self.control_bits.serialize() as u16))
+                .to_be_bytes(),
+        );
         bytes.extend_from_slice(&self.window.to_be_bytes());
         bytes.extend_from_slice(&self.calculate_checksum(src_adr, dst_adr)?.to_be_bytes());
         bytes.extend_from_slice(&self.urgent_pointer.to_be_bytes());
         // TODO: Add options / padding
         bytes.extend_from_slice(&self.options);
-
 
         bytes.extend_from_slice(self.data.as_slice());
 
@@ -93,7 +108,11 @@ impl TCP {
             .ok_or(ResponseError::DataTooLarge)
     }
 
-    pub fn calculate_checksum(&self, src_adr: &IPAddress, dst_adr: &IPAddress) -> Result<u16, ResponseError> {
+    pub fn calculate_checksum(
+        &self,
+        src_adr: &IPAddress,
+        dst_adr: &IPAddress,
+    ) -> Result<u16, ResponseError> {
         let mut num: Vec<u16> = Vec::new();
 
         // 96 bit Pseudo header
@@ -101,7 +120,7 @@ impl TCP {
         num.push(src_adr.0 as u16);
         num.push((dst_adr.0 >> 16) as u16);
         num.push(dst_adr.0 as u16);
-        num.push(0 as u16); // Zeros
+        num.push(0 as u16); // Zeros -- Is this really correct?
         num.push(Protocol::TCP.serialize() as u16); // Protocol
         num.push(self.len()?); // Full length
 
@@ -112,7 +131,11 @@ impl TCP {
         num.push(self.sequence_number as u16);
         num.push((self.acknowledgement_number >> 16) as u16);
         num.push(self.acknowledgement_number as u16);
-        num.push(((self.data_offset as u16) << 12) | (self.reserved << 6) as u16 | self.control_bits.serialize() as u16);
+        num.push(
+            ((self.data_offset as u16) << 12)
+                | (self.reserved << 6) as u16
+                | self.control_bits.serialize() as u16,
+        );
         num.push(self.window);
         num.push(0 as u16);
         num.push(self.urgent_pointer);
@@ -135,7 +158,9 @@ impl TCP {
 
 impl Display for TCP {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{{
+        write!(
+            f,
+            "{{
     Source port: {},
     Destination port: {},
     Sequence number: {},
@@ -147,9 +172,18 @@ impl Display for TCP {
     Urgent pointer: {},
     Options: {:?},
     Data: {:?},
-}}", self.src_port, self.dst_port, self.sequence_number, self.acknowledgement_number,
-            self.data_offset, self.reserved, indent_string(self.control_bits.to_string()),
-            self.window, self.urgent_pointer, self.options, self.data,
+}}",
+            self.src_port,
+            self.dst_port,
+            self.sequence_number,
+            self.acknowledgement_number,
+            self.data_offset,
+            self.reserved,
+            indent_string(self.control_bits.to_string()),
+            self.window,
+            self.urgent_pointer,
+            self.options,
+            self.data,
         )
     }
 }

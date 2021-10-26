@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
-use tun_tap::Iface;
+use crate::common::arithmetics::calculate_ones_complement_sum;
+use crate::layers::ip_layer::ip_layer::IPLayerProtocol;
+use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
 use crate::layers::transport_layer::tcp::tcb::TCB;
+use crate::layers::transport_layer::tcp::tcp::TCP;
 use crate::layers::transport_layer::tcp::tcp_ip_port_quad::TCPQuad;
 use crate::layers::transport_layer::transport_layer::TransportLayer;
-use crate::layers::tun_layer::tun_layer::{TunLayer};
-use crate::layers::ip_layer::ip_layer::IPLayerProtocol;
+use crate::layers::tun_layer::tun_layer::TunLayer;
 use std::io::Error;
-use crate::common::arithmetics::calculate_ones_complement_sum;
-use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
-use crate::layers::transport_layer::tcp::tcp::TCP;
+use tun_tap::Iface;
 
 mod common;
 mod layers;
@@ -30,6 +30,17 @@ fn main() {
                     println!("IPv4: {}", ipv4.to_short_string());
                     // println!("IPv4: {}", ipv4);
                     match &ipv4.data {
+                        TransportLayer::UDP(udp) => {
+                            println!(
+                                "UDP: {}\n(Calculated checksum: {:X}",
+                                udp,
+                                udp.calculate_checksum(
+                                    &ipv4.source_address,
+                                    &ipv4.destination_address
+                                )
+                                .expect("Shit happens")
+                            );
+                        }
                         TransportLayer::TCP(tcp) => {
                             let quad = TCPQuad {
                                 src_ip: ipv4.source_address.clone(),
@@ -41,7 +52,8 @@ fn main() {
                             let result = match connections
                                 .entry(quad.clone())
                                 .or_default()
-                                .on_packet_received(tcp) {
+                                .on_packet_received(tcp)
+                            {
                                 Ok(v) => v,
                                 Err(e) => {
                                     eprintln!("Failed to handle packet: {}", e);
@@ -69,20 +81,21 @@ fn main() {
                             let data = tcb.receive_buffer.clone();
                             let len = data.len();
                             if len > 0 {
-                                println!("{} bytes of data in receive buffer: {}",
-                                    len, String::from_utf8(data).unwrap(),
+                                println!(
+                                    "{} bytes of data in receive buffer: {}",
+                                    len,
+                                    String::from_utf8(data).unwrap(),
                                 );
                             }
 
-                            connections.insert(
-                                quad,
-                                tcb,
-                            );
+                            connections.insert(quad, tcb);
 
                             // Does this warrant a response?
                             if let Some(tcp) = tcp_opt {
                                 let resp = match ipv4.generate_response(TransportLayer::TCP(tcp)) {
-                                    Ok(val) => TunLayer::generate_response(IPLayerProtocol::IPv4(val)),
+                                    Ok(val) => {
+                                        TunLayer::generate_response(IPLayerProtocol::IPv4(val))
+                                    }
                                     Err(e) => {
                                         eprintln!("failed to generate ipv4 response: {}", e);
                                         continue;
@@ -114,7 +127,7 @@ fn main() {
                         _ => {}
                     }
                 }
-                IPLayerProtocol::Other(_) => println!("Unsupported protocol: {}", tun_layer.proto)
+                IPLayerProtocol::Other(_) => println!("Unsupported protocol: {}", tun_layer.proto),
             }
         }
     }

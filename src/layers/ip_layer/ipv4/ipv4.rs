@@ -1,16 +1,17 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-use crate::common::parsing::{read_u16, read_u32, read_u8, read_vec, U13, U3, U4};
-use crate::layers::ip_layer::ipv4::type_of_service::TypeOfService;
-use crate::layers::transport_layer::transport_layer::TransportLayer;
-use crate::layers::ip_layer::ipv4::ip_protocol::Protocol;
-use crate::layers::ip_layer::ipv4::ip_flags::Flags;
-use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
-use crate::common::formatting::indent_string;
-use crate::layers::transport_layer::tcp::tcp::TCP;
-use crate::common::response_error::ResponseError;
 use crate::common::arithmetics::calculate_ones_complement_sum;
+use crate::common::formatting::indent_string;
+use crate::common::parsing::{read_u16, read_u32, read_u8, read_vec, U13, U3, U4};
+use crate::common::response_error::ResponseError;
+use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
+use crate::layers::ip_layer::ipv4::ip_flags::Flags;
+use crate::layers::ip_layer::ipv4::ip_protocol::Protocol;
+use crate::layers::ip_layer::ipv4::type_of_service::TypeOfService;
+use crate::layers::transport_layer::tcp::tcp::TCP;
+use crate::layers::transport_layer::transport_layer::TransportLayer;
+use crate::layers::transport_layer::udp::udp::UDP;
 
 #[derive(Clone, Debug)]
 pub struct IPv4 {
@@ -78,8 +79,13 @@ impl Display for ResponseError {
 
 impl IPv4 {
     pub fn to_short_string(&self) -> String {
-        format!("{} → {} | {} :: {}", self.source_address, self.destination_address,
-                self.protocol, self.data.to_short_string())
+        format!(
+            "{} → {} | {} :: {}",
+            self.source_address,
+            self.destination_address,
+            self.protocol,
+            self.data.to_short_string()
+        )
     }
 
     pub fn parse(buf: &mut &[u8]) -> Option<IPv4> {
@@ -192,6 +198,7 @@ impl IPv4 {
             data: {
                 match protocol {
                     Protocol::TCP => TransportLayer::TCP(TCP::parse(buf)?),
+                    Protocol::UDP => TransportLayer::UDP(UDP::parse(buf)?),
                     _ => TransportLayer::Other(read_vec(buf, data_length as usize)?),
                 }
             },
@@ -226,7 +233,11 @@ impl IPv4 {
 
     pub fn calculate_checksum(&self) -> u16 {
         let mut numbers: Vec<u16> = Vec::new();
-        numbers.push(((self.version as u16) << 12) | ((self.internet_header_length as u16) << 8) | self.type_of_service.serialize() as u16);
+        numbers.push(
+            ((self.version as u16) << 12)
+                | ((self.internet_header_length as u16) << 8)
+                | self.type_of_service.serialize() as u16,
+        );
         numbers.push(self.total_length);
         numbers.push(self.identification);
         numbers.push(((self.flags.serialize() as u16) << 13) | self.fragment_offset);
@@ -239,7 +250,7 @@ impl IPv4 {
         // TODO: Support options
         // TODO: Add data
 
-        return calculate_ones_complement_sum(numbers)
+        return calculate_ones_complement_sum(numbers);
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>, ResponseError> {
@@ -249,14 +260,20 @@ impl IPv4 {
         bytes.push(self.type_of_service.serialize());
         bytes.extend_from_slice(&self.total_length.to_be_bytes());
         bytes.extend_from_slice(&self.identification.to_be_bytes());
-        bytes.extend_from_slice(&(((self.flags.serialize() as u16) << 13) | self.fragment_offset).to_be_bytes());
+        bytes.extend_from_slice(
+            &(((self.flags.serialize() as u16) << 13) | self.fragment_offset).to_be_bytes(),
+        );
         bytes.push(self.time_to_live);
         bytes.push(self.protocol.serialize());
         bytes.extend_from_slice(&self.calculate_checksum().to_be_bytes());
         bytes.extend_from_slice(&self.source_address.0.to_be_bytes());
         bytes.extend_from_slice(&self.destination_address.0.to_be_bytes());
         // TODO: Options / Padding
-        bytes.extend_from_slice(self.data.serialize(&self.source_address, &self.destination_address)?.as_slice());
+        bytes.extend_from_slice(
+            self.data
+                .serialize(&self.source_address, &self.destination_address)?
+                .as_slice(),
+        );
         Ok(bytes)
     }
 }
