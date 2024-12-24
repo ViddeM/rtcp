@@ -195,13 +195,7 @@ impl IPv4 {
                 IPAddress(val)
             },
             options_and_padding: read_vec(buf, remaining_header as usize)?,
-            data: {
-                match protocol {
-                    Protocol::TCP => TransportLayer::TCP(TCP::parse(buf)?),
-                    Protocol::UDP => TransportLayer::UDP(UDP::parse(buf)?),
-                    _ => TransportLayer::Other(read_vec(buf, data_length as usize)?),
-                }
-            },
+            data: TransportLayer::parse(&protocol, data_length as usize, buf)?,
         })
     }
 
@@ -255,7 +249,7 @@ impl IPv4 {
 
     pub fn serialize(&self) -> Result<Vec<u8>, ResponseError> {
         let mut bytes = Vec::new();
-        let mut first_byte: u8 = (4 << 4) | 5; // Version 4, header length 5 * 32 bit. TODO: Maybe not hardcoded?
+        let first_byte: u8 = (4 << 4) | 5; // Version 4, header length 5 * 32 bit. TODO: Maybe not hardcoded?
         bytes.push(first_byte);
         bytes.push(self.type_of_service.serialize());
         bytes.extend_from_slice(&self.total_length.to_be_bytes());

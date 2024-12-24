@@ -1,9 +1,9 @@
-use crate::common::parsing::{read_u16};
+use crate::common::formatting::indent_string;
+use crate::common::parsing::read_u16;
+use crate::common::response_error::ResponseError;
 use crate::layers::ip_layer::ip_layer::IPLayerProtocol;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use crate::common::formatting::indent_string;
-use crate::common::response_error::ResponseError;
 
 #[derive(Clone, Debug)]
 pub struct TunLayer {
@@ -21,7 +21,9 @@ impl Display for TunLayer {
     proto: {},
     data: {},
 }}",
-            self.flags, self.proto, indent_string(self.data.to_string()),
+            self.flags,
+            self.proto,
+            indent_string(self.data.to_string()),
         )
     }
 }
@@ -38,12 +40,13 @@ impl TunLayer {
             data: {
                 match proto {
                     Protocol::IPv4 => IPLayerProtocol::parse(buf),
+                    Protocol::IPv6 => IPLayerProtocol::parse(buf),
                     _ => IPLayerProtocol::Other(buf.to_vec()),
                 }
             },
         })
     }
-    
+
     pub fn generate_response(ip_layer: IPLayerProtocol) -> TunLayer {
         TunLayer {
             flags: 0,

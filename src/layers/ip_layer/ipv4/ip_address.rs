@@ -13,7 +13,7 @@ impl Display for IPAddress {
 
 impl PartialEq for IPAddress {
     fn eq(&self, other: &Self) -> bool {
-        return self.0 == other.0
+        return self.0 == other.0;
     }
 }
 

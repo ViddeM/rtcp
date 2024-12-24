@@ -4,6 +4,7 @@ pub type U3 = u8;
 pub type U4 = u8;
 pub type U6 = u8;
 pub type U13 = u16;
+pub type U20 = u32;
 pub type U24 = u32;
 
 pub fn read_u8(buffer: &mut &[u8]) -> Option<u8> {
@@ -17,14 +18,23 @@ pub fn read_u16(buffer: &mut &[u8]) -> Option<u16> {
     Some(u16::from_be_bytes([b0, b1]))
 }
 
+pub fn read_u20(buffer: &mut &[u8]) -> Option<U20> {
+    let [b0, b1, b2] = read_array(buffer)?;
+    Some(u32::from_be_bytes([0, b0, b1, b2]))
+}
+
 pub fn read_u24(buffer: &mut &[u8]) -> Option<U24> {
     let [b0, b1, b2] = read_array(buffer)?;
-    return Some(u32::from_be_bytes([0, b0, b1, b2]));
+    Some(u32::from_be_bytes([0, b0, b1, b2]))
 }
 
 pub fn read_u32(buffer: &mut &[u8]) -> Option<u32> {
     let [b0, b1, b2, b3] = read_array(buffer)?;
-    return Some(u32::from_be_bytes([b0, b1, b2, b3]));
+    Some(u32::from_be_bytes([b0, b1, b2, b3]))
+}
+
+pub fn read_u128(buffer: &mut &[u8]) -> Option<u128> {
+    Some(u128::from_be_bytes(read_array(buffer)?))
 }
 
 pub fn read_array<const LEN: usize>(buffer: &mut &[u8]) -> Option<[u8; LEN]> {

@@ -1,5 +1,7 @@
+use crate::common::parsing::read_vec;
 use crate::common::response_error::ResponseError;
 use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
+use crate::layers::ip_layer::ipv4::ip_protocol::Protocol;
 use crate::layers::transport_layer::tcp::tcp::TCP;
 use crate::layers::transport_layer::udp::udp::UDP;
 use std::convert::TryInto;
@@ -50,6 +52,14 @@ impl TransportLayer {
             TransportLayer::TCP(tcp) => tcp.len()?,
             TransportLayer::UDP(udp) => udp.len()?,
             TransportLayer::Other(data) => data.len() as u16,
+        })
+    }
+
+    pub fn parse(protocol: &Protocol, len: usize, buf: &mut &[u8]) -> Option<Self> {
+        Some(match protocol {
+            Protocol::TCP => Self::TCP(TCP::parse(buf)?),
+            Protocol::UDP => Self::UDP(UDP::parse(buf)?),
+            _ => Self::Other(read_vec(buf, len)?),
         })
     }
 }

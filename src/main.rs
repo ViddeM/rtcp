@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::common::arithmetics::calculate_ones_complement_sum;
 use crate::layers::ip_layer::ip_layer::IPLayerProtocol;
 use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
 use crate::layers::transport_layer::tcp::tcb::TCB;
@@ -8,7 +7,6 @@ use crate::layers::transport_layer::tcp::tcp::TCP;
 use crate::layers::transport_layer::tcp::tcp_ip_port_quad::TCPQuad;
 use crate::layers::transport_layer::transport_layer::TransportLayer;
 use crate::layers::tun_layer::tun_layer::TunLayer;
-use std::io::Error;
 use tun_tap::Iface;
 
 mod common;
@@ -26,6 +24,9 @@ fn main() {
         if let Some(tun_layer) = TunLayer::parse(&mut &buf[..n_bytes]) {
             // println!("Parsed: {}", tun_layer);
             match tun_layer.data {
+                IPLayerProtocol::IPv6(ipv6) => {
+                    println!("IPv6: {}", ipv6.to_short_string());
+                }
                 IPLayerProtocol::IPv4(ipv4) => {
                     println!("IPv4: {}", ipv4.to_short_string());
                     // println!("IPv4: {}", ipv4);
