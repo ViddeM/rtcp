@@ -1,4 +1,4 @@
-use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
+use crate::layers::ip_layer::IPAddress;
 
 #[derive(Clone, Debug, Hash)]
 pub struct TCPQuad {
@@ -10,13 +10,11 @@ pub struct TCPQuad {
 
 impl PartialEq for TCPQuad {
     fn eq(&self, other: &Self) -> bool {
-        return self.src_port == other.src_port &&
-            self.dst_port == other.dst_port &&
-            self.src_ip == other.src_ip &&
-            self.dst_ip == other.dst_ip;
+        return self.src_port == other.src_port
+            && self.dst_port == other.dst_port
+            && self.src_ip == other.src_ip
+            && self.dst_ip == other.dst_ip;
     }
 }
 
-impl Eq for TCPQuad {
-
-}
+impl Eq for TCPQuad {}

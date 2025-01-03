@@ -1,10 +1,9 @@
-use crate::common::arithmetics::calculate_ones_complement_sum;
 use crate::common::parsing::read_u16;
-use crate::common::response_error::ResponseError;
-use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
-use crate::layers::ip_layer::ipv4::ip_protocol::Protocol;
+use crate::layers::ip_layer::ip_protocol::Protocol;
+use crate::{common::arithmetics::calculate_ones_complement_sum, layers::ip_layer::IPAddress};
+use colored::Colorize;
 use core::fmt;
-use std::convert::TryFrom;
+use eyre::{Context, ContextCompat};
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug)]
@@ -19,12 +18,12 @@ pub struct UDP {
 impl UDP {
     pub fn to_short_string(&self) -> String {
         format!(
-            ":{} -> :{} {}b ({}b) checksum:{}",
-            self.src_port,
-            self.dst_port,
-            self.length,
-            self.data.len(),
-            self.checksum
+            ":{} -> :{} {}b ({}b) checksum: {}",
+            self.src_port.to_string().blue(),
+            self.dst_port.to_string().green(),
+            self.length.to_string().yellow(),
+            self.data.len().to_string().purple(),
+            self.checksum.to_string().green()
         )
     }
 
@@ -38,41 +37,51 @@ impl UDP {
         })
     }
 
-    pub fn serialize(
-        &self,
-        src_adr: &IPAddress,
-        dst_adr: &IPAddress,
-    ) -> Result<Vec<u8>, ResponseError> {
+    pub fn serialize(&self, src_adr: &IPAddress, dst_adr: &IPAddress) -> eyre::Result<Vec<u8>> {
         let mut bytes: Vec<u8> = Vec::new();
         bytes.extend_from_slice(&self.src_port.to_be_bytes());
         bytes.extend_from_slice(&self.dst_port.to_be_bytes());
-        bytes.extend_from_slice(&self.len()?.to_be_bytes());
-        bytes.extend_from_slice(&self.calculate_checksum(src_adr, dst_adr)?.to_be_bytes());
+        bytes.extend_from_slice(
+            &self
+                .len()
+                .wrap_err("failed calculating udp len")?
+                .to_be_bytes(),
+        );
+        bytes.extend_from_slice(
+            &self
+                .calculate_checksum(src_adr, dst_adr)
+                .wrap_err("failed to calculate udp checksum")?
+                .to_be_bytes(),
+        );
 
         bytes.extend_from_slice(&self.data.as_slice());
 
         Ok(bytes)
     }
 
-    pub fn len(&self) -> Result<u16, ResponseError> {
-        const header_len: u16 = 8; // Always 8 bytes
+    const HEADER_LEN: u16 = 8; // Always 8 bytes
+    pub fn len(&self) -> eyre::Result<u16> {
         let data_len = self.data.len() as u16;
-        header_len
+        Self::HEADER_LEN
             .checked_add(data_len)
-            .ok_or(ResponseError::DataTooLarge)
+            .wrap_err("UDP length too large")
     }
 
     pub fn calculate_checksum(
         &self,
         src_adr: &IPAddress,
         dst_adr: &IPAddress,
-    ) -> Result<u16, ResponseError> {
+    ) -> eyre::Result<u16> {
         let mut num: Vec<u16> = Vec::new();
-        // 96 bit pseudo header
-        num.push((src_adr.0 >> 16) as u16);
-        num.push(src_adr.0 as u16);
-        num.push((dst_adr.0 >> 16) as u16);
-        num.push(dst_adr.0 as u16);
+        // Pseudo header (96 bit for ipv4)
+        for s in src_adr.get_bytes().chunks_exact(2) {
+            num.push(u16::from_be_bytes([s[0], s[1]]));
+        }
+
+        for d in dst_adr.get_bytes().chunks_exact(2) {
+            num.push(u16::from_be_bytes([d[0], d[1]]));
+        }
+
         num.push(Protocol::UDP.serialize() as u16);
         num.push(self.length);
 

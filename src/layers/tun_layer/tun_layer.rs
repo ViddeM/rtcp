@@ -1,6 +1,8 @@
+use eyre::{Context, ContextCompat};
+
 use crate::common::formatting::indent_string;
 use crate::common::parsing::read_u16;
-use crate::common::response_error::ResponseError;
+use crate::common::proto::Proto;
 use crate::layers::ip_layer::ip_layer::IPLayerProtocol;
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -28,25 +30,31 @@ impl Display for TunLayer {
     }
 }
 
-impl TunLayer {
-    pub fn parse(buf: &mut &[u8]) -> Option<TunLayer> {
-        let proto: Protocol;
-        Some(TunLayer {
-            flags: read_u16(buf)?,
-            proto: {
-                proto = Protocol::parse(read_u16(buf)?);
-                proto.clone()
-            },
-            data: {
-                match proto {
-                    Protocol::IPv4 => IPLayerProtocol::parse(buf),
-                    Protocol::IPv6 => IPLayerProtocol::parse(buf),
-                    _ => IPLayerProtocol::Other(buf.to_vec()),
-                }
-            },
-        })
+impl Proto for TunLayer {
+    fn to_short_string(&self) -> String {
+        format!("{} ({})", self.proto, self.flags)
     }
 
+    fn parse(buf: &mut &[u8]) -> eyre::Result<Self> {
+        let t = TunLayer {
+            flags: read_u16(buf).wrap_err("reading flags")?,
+            proto: Protocol::parse(read_u16(buf).wrap_err("reading protocol")?),
+            data: IPLayerProtocol::parse(buf),
+        };
+
+        match (&t.proto, &t.data) {
+            (Protocol::IPv4, IPLayerProtocol::IPv4(_)) => {}
+            (Protocol::IPv6, IPLayerProtocol::IPv6(_)) => {}
+            (proto, parsed) => {
+                eyre::bail!("Missmatched protocol, expected {proto}, got {parsed}");
+            }
+        }
+
+        Ok(t)
+    }
+}
+
+impl TunLayer {
     pub fn generate_response(ip_layer: IPLayerProtocol) -> TunLayer {
         TunLayer {
             flags: 0,
@@ -55,11 +63,11 @@ impl TunLayer {
         }
     }
 
-    pub fn serialize(&self) -> Result<Vec<u8>, ResponseError> {
+    pub fn serialize(&self) -> eyre::Result<Vec<u8>> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&self.flags.to_be_bytes());
         bytes.extend_from_slice(&self.proto.serialize().to_be_bytes());
-        bytes.extend_from_slice(&self.data.serialize()?);
+        bytes.extend_from_slice(&self.data.serialize().wrap_err("serializing data")?);
         Ok(bytes)
     }
 }

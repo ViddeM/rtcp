@@ -1,5 +1,5 @@
-use std::fmt::{Display, Formatter};
 use std::fmt;
+use std::fmt::{Display, Formatter};
 
 // The IP protocol as determined by https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
 #[derive(Clone, Debug)]
@@ -10,6 +10,7 @@ pub enum Protocol {
     TCP,
     UDP,
     IPv6,
+    IPv6ICMP,
     Other(u8),
 }
 
@@ -22,6 +23,7 @@ impl Protocol {
             6 => Protocol::TCP,
             17 => Protocol::UDP,
             41 => Protocol::IPv6,
+            58 => Protocol::IPv6ICMP,
             v => Protocol::Other(v),
         }
     }
@@ -34,6 +36,7 @@ impl Protocol {
             Protocol::TCP => 6,
             Protocol::UDP => 17,
             Protocol::IPv6 => 41,
+            Protocol::IPv6ICMP => 58,
             Protocol::Other(v) => v.clone(),
         }
     }
@@ -48,6 +51,9 @@ impl Display for Protocol {
             Protocol::TCP => write!(f, "(TCP) Transmission Control"),
             Protocol::UDP => write!(f, "(UDP) User Datagram"),
             Protocol::IPv6 => write!(f, "(IPv6) IPv6 encapsulation"),
+            Protocol::IPv6ICMP => {
+                write!(f, "(IPv6 ICMP) Internet Control Message Protocol over IPv6")
+            }
             Protocol::Other(v) => write!(f, "Other ({})", v),
         }
     }

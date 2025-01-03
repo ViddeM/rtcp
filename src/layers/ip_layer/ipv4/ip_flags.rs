@@ -1,35 +1,41 @@
+use eyre::Context;
+
 use crate::common::parsing::{U1, U3};
-use std::fmt::{Display, Formatter};
 use std::fmt;
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug)]
 pub struct Flags {
     reserved: U1,
     df: DF,
-    mf: MF
+    mf: MF,
 }
 
 impl Display for Flags {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Flags {{
+        write!(
+            f,
+            "Flags {{
     reserved: {},
     DF: {},
     MF: {},
-}}", self.reserved, self.df, self.mf)
+}}",
+            self.reserved, self.df, self.mf
+        )
     }
 }
 
 impl Flags {
-    pub fn parse(num: U3) -> Option<Flags> {
-        Some(Flags {
+    pub fn parse(num: U3) -> eyre::Result<Flags> {
+        Ok(Flags {
             reserved: num & 0b100 >> 2,
-            df: DF::parse(num)?,
-            mf: MF::parse(num)?,
+            df: DF::parse(num).wrap_err("parsing DF")?,
+            mf: MF::parse(num).wrap_err("parsing MF")?,
         })
     }
 
     pub fn serialize(&self) -> U3 {
-         0 | (self.df.serialize() << 1) | self.mf.serialize()
+        0 | (self.df.serialize() << 1) | self.mf.serialize()
     }
 }
 
@@ -46,7 +52,7 @@ impl Default for Flags {
 #[derive(Clone, Debug)]
 pub enum DF {
     MayFragment,
-    DontFragment
+    DontFragment,
 }
 
 impl Display for DF {
@@ -59,14 +65,13 @@ impl Display for DF {
 }
 
 impl DF {
-    fn parse(num: U1) -> Option<DF> {
-        Some(match (num & 0b010) >> 1 {
+    fn parse(num: U1) -> eyre::Result<DF> {
+        Ok(match (num & 0b010) >> 1 {
             0 => DF::MayFragment,
             1 => DF::DontFragment,
             v => {
-                eprintln!("Invalid DF flag bit {}", v);
-                return None
-            },
+                eyre::bail!("Invalid DF flag bit {}", v);
+            }
         })
     }
 
@@ -88,20 +93,19 @@ impl Display for MF {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             MF::LastFragment => write!(f, "Last fragment"),
-            MF::MoreFragments => write!(f, "More fragments")
+            MF::MoreFragments => write!(f, "More fragments"),
         }
     }
 }
 
 impl MF {
-    fn parse(num: U3) -> Option<MF> {
-        Some(match num & 0b001 {
+    fn parse(num: U3) -> eyre::Result<MF> {
+        Ok(match num & 0b001 {
             0 => MF::LastFragment,
             1 => MF::MoreFragments,
             v => {
-                eprintln!("Invalid MF flag bit {}", v);
-                return None
-            },
+                eyre::bail!("Invalid MF flag bit {}", v);
+            }
         })
     }
 
@@ -112,3 +116,4 @@ impl MF {
         }
     }
 }
+

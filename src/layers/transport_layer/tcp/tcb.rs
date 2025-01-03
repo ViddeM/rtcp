@@ -1,16 +1,15 @@
-use crate::layers::transport_layer::tcp::tcp::TCP;
-use crate::layers::transport_layer::tcp::states::tcp_state::TcpState;
-use crate::layers::transport_layer::tcp::states::listen::handle_listen_receive;
-use crate::layers::transport_layer::tcp::tcp_error::TcpError;
-use crate::layers::transport_layer::tcp::send_sequence::SendSequence;
 use crate::layers::transport_layer::tcp::receive_sequence::ReceiveSequence;
-use crate::layers::transport_layer::tcp::states::syn_received::handle_syn_received_receive;
-use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
+use crate::layers::transport_layer::tcp::send_sequence::SendSequence;
 use crate::layers::transport_layer::tcp::states::established::handle_established_receive;
+use crate::layers::transport_layer::tcp::states::listen::handle_listen_receive;
+use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
+use crate::layers::transport_layer::tcp::states::syn_received::handle_syn_received_receive;
+use crate::layers::transport_layer::tcp::states::tcp_state::TcpState;
+use crate::layers::transport_layer::tcp::tcp::TCP;
 
 // As specified in https://datatracker.ietf.org/doc/html/rfc793#section-3.2
 pub struct TCB {
-    pub local_port: u16, // Socket number?
+    pub local_port: u16,  // Socket number?
     pub remote_port: u16, // Socket number?
     // TODO: Should contain ''The security and precedence of the connection''
     // TODO: Should contain pointer to retransmit queue.
@@ -22,12 +21,12 @@ pub struct TCB {
 }
 
 impl TCB {
-    pub fn on_packet_received(&self, tcp: &TCP) -> Result<TCPStateChange, TcpError> {
+    pub fn on_packet_received(&self, tcp: &TCP) -> eyre::Result<TCPStateChange> {
         match &self.state {
             TcpState::Listen => handle_listen_receive(self, tcp),
             TcpState::SynReceived => handle_syn_received_receive(self, tcp),
             TcpState::Established => handle_established_receive(self, tcp),
-            state => Err(TcpError::NotSupported(state.to_string())),
+            state => eyre::bail!("unsupported TCP state {{{state}}}"),
         }
     }
 }
@@ -41,7 +40,7 @@ impl Default for TCB {
             receive_sequence: ReceiveSequence::default(),
             state: TcpState::Listen,
             send_buffer: vec![],
-            receive_buffer: vec![]
+            receive_buffer: vec![],
         }
     }
 }

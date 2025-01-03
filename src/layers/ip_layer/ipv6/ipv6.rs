@@ -1,13 +1,15 @@
 use std::fmt::Display;
 
+use colored::Colorize;
+use eyre::{Context, ContextCompat};
+
 use crate::{
     common::{
         formatting::indent_string,
         parsing::{read_u128, read_u16, read_u8, U20, U4},
+        proto::Proto,
     },
-    layers::{
-        ip_layer::ipv4::ip_protocol::Protocol, transport_layer::transport_layer::TransportLayer,
-    },
+    layers::{ip_layer::ip_protocol::Protocol, transport_layer::transport_layer::TransportLayer},
 };
 
 use super::ipv6_address::IPAddressV6;
@@ -53,42 +55,51 @@ impl Display for IPv6 {
     }
 }
 
-impl IPv6 {
-    pub fn to_short_string(&self) -> String {
+impl Proto for IPv6 {
+    fn to_short_string(&self) -> String {
         format!(
             "{} → {} | {} :: {}",
-            self.source_address,
-            self.destination_address,
-            self.next_header,
+            self.source_address.to_string().blue(),
+            self.destination_address.to_string().purple(),
+            self.next_header.to_string().green(),
             self.data.to_short_string()
         )
     }
 
-    pub fn parse(buf: &mut &[u8]) -> Option<IPv6> {
-        let byte = read_u8(buf)?;
+    fn parse(buf: &mut &[u8]) -> eyre::Result<Self> {
+        let byte = read_u8(buf).wrap_err("reading version byte")?;
         let version: U4 = byte >> 4;
 
-        let next_byte = read_u8(buf)?;
+        let next_byte = read_u8(buf).wrap_err("reading second IPv6 byte")?;
 
         let traffic_class = (byte << 4) | (next_byte >> 4);
 
-        let flow_label = read_u16(buf)? as U20;
+        let flow_label = read_u16(buf).wrap_err("reading flow_label")? as U20;
         let flow_label = (((next_byte & 0x0F) as U20) << 16) | flow_label;
 
-        let payload_length = read_u16(buf)?;
+        let payload_length = read_u16(buf).wrap_err("reading payload length")?;
 
-        let protocol = Protocol::parse(read_u8(buf)?);
+        let protocol = Protocol::parse(read_u8(buf).wrap_err("reading protocol byte")?);
 
-        Some(IPv6 {
+        Ok(IPv6 {
             version,
             traffic_class,
             flow_label,
             payload_length,
             next_header: protocol.clone(),
-            hop_limit: read_u8(buf)?,
-            source_address: IPAddressV6(read_u128(buf)?),
-            destination_address: IPAddressV6(read_u128(buf)?),
-            data: TransportLayer::parse(&protocol, payload_length as usize, buf)?,
+            hop_limit: read_u8(buf).wrap_err("reading hop limit")?,
+            source_address: IPAddressV6(read_u128(buf).wrap_err("reading source address")?),
+            destination_address: IPAddressV6(
+                read_u128(buf).wrap_err("reading destination address")?,
+            ),
+            data: TransportLayer::parse(&protocol, payload_length as usize, buf)
+                .wrap_err("parsing transport layer")?,
         })
+    }
+}
+
+impl IPv6 {
+    pub fn generate_response(&self, data: TransportLayer) -> eyre::Result<Self> {
+        todo!("not yet implemented")
     }
 }

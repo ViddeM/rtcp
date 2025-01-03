@@ -1,4 +1,6 @@
-use crate::common::parsing::{U2, U3, U1};
+use eyre::Context;
+
+use crate::common::parsing::{U1, U2, U3};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -28,12 +30,12 @@ impl Display for TypeOfService {
 }
 
 impl TypeOfService {
-    pub fn parse(num: u8) -> Option<TypeOfService> {
-        Some(TypeOfService {
-            precedence: Precedence::parse(num)?,
-            delay: Delay::parse(num)?,
-            throughput: Throughput::parse(num)?,
-            reliability: Reliability::parse(num)?,
+    pub fn parse(num: u8) -> eyre::Result<TypeOfService> {
+        Ok(TypeOfService {
+            precedence: Precedence::parse(num).wrap_err("parsing precedence")?,
+            delay: Delay::parse(num).wrap_err("parsing delay")?,
+            throughput: Throughput::parse(num).wrap_err("parsing throughput")?,
+            reliability: Reliability::parse(num).wrap_err("parsing reliability")?,
             reserved: num & 0b00000011,
         })
     }
@@ -54,7 +56,7 @@ impl Default for TypeOfService {
             delay: Delay::Normal,
             throughput: Throughput::Normal,
             reliability: Reliability::Normal,
-            reserved: 0
+            reserved: 0,
         }
     }
 }
@@ -87,9 +89,9 @@ impl Display for Precedence {
 }
 
 impl Precedence {
-    fn parse(num: U3) -> Option<Precedence> {
+    fn parse(num: U3) -> eyre::Result<Precedence> {
         let val = (num & 0b11100000) >> 5;
-        Some(match val {
+        Ok(match val {
             0b111 => Precedence::NetworkControl,
             0b110 => Precedence::InternetworkControl,
             0b101 => Precedence::CriticECP,
@@ -99,8 +101,7 @@ impl Precedence {
             0b001 => Precedence::Priority,
             0b000 => Precedence::Routine,
             v => {
-                eprintln!("Invalid precedence {}", v);
-                return None;
+                eyre::bail!("Invalid precedence {}", v);
             }
         })
     }
@@ -135,14 +136,13 @@ impl Display for Delay {
 }
 
 impl Delay {
-    fn parse(num: u8) -> Option<Delay> {
+    fn parse(num: u8) -> eyre::Result<Delay> {
         let val = (num & 0b00010000) >> 4;
-        Some(match val {
+        Ok(match val {
             0b0 => Delay::Normal,
             0b1 => Delay::Low,
             v => {
-                eprintln!("Invalid delay: {}", v);
-                return None;
+                eyre::bail!("Invalid delay: {}", v);
             }
         })
     }
@@ -150,7 +150,7 @@ impl Delay {
     fn serialize(&self) -> U1 {
         match self {
             Delay::Normal => 0b0,
-            Delay::Low =>  0b1,
+            Delay::Low => 0b1,
         }
     }
 }
@@ -171,14 +171,13 @@ impl Display for Throughput {
 }
 
 impl Throughput {
-    fn parse(num: u8) -> Option<Throughput> {
+    fn parse(num: u8) -> eyre::Result<Throughput> {
         let val = (num & 0b00001000) >> 3;
-        Some(match val {
+        Ok(match val {
             0b0 => Throughput::Normal,
             0b1 => Throughput::High,
             v => {
-                eprintln!("Invalid throughput: {}", v);
-                return None;
+                eyre::bail!("Invalid throughput: {}", v);
             }
         })
     }
@@ -207,14 +206,13 @@ impl Display for Reliability {
 }
 
 impl Reliability {
-    fn parse(num: u8) -> Option<Reliability> {
+    fn parse(num: u8) -> eyre::Result<Reliability> {
         let val = (num & 0b00000100) >> 2;
-        Some(match val {
+        Ok(match val {
             0b0 => Reliability::Normal,
             0b1 => Reliability::High,
             v => {
-                eprintln!("Invalid reliability: {}", v);
-                return None;
+                eyre::bail!("Invalid reliability: {}", v);
             }
         })
     }

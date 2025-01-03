@@ -1,15 +1,13 @@
+use crate::layers::transport_layer::tcp::control_bits::ControlBits;
+use crate::layers::transport_layer::tcp::receive_sequence::ReceiveSequence;
+use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
+use crate::layers::transport_layer::tcp::states::tcp_state::TcpState;
 use crate::layers::transport_layer::tcp::tcb::TCB;
 use crate::layers::transport_layer::tcp::tcp::TCP;
-use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
-use crate::layers::transport_layer::tcp::tcp_error::TcpError;
-use crate::layers::transport_layer::tcp::receive_sequence::ReceiveSequence;
-use crate::layers::transport_layer::tcp::states::tcp_state::TcpState;
-use crate::layers::transport_layer::tcp::control_bits::ControlBits;
 
-pub fn handle_established_receive(tcb: &TCB, segment: &TCP) -> Result<TCPStateChange, TcpError>{
+pub fn handle_established_receive(tcb: &TCB, segment: &TCP) -> eyre::Result<TCPStateChange> {
     if !segment.control_bits.ack {
-        eprintln!("Missing ack flag");
-        return Err(TcpError::UnexpectedConnection)
+        eyre::bail!("missing ack flag");
     }
 
     let mut new_buffer = tcb.receive_buffer.to_owned();
@@ -21,8 +19,9 @@ pub fn handle_established_receive(tcb: &TCB, segment: &TCP) -> Result<TCPStateCh
             .sequence_number
             .overflowing_add(segment.data.len() as u32)
             .0; // TODO: Handle if segment.data.len() > u32 max value
-    } else if segment.sequence_number < tcb.receive_sequence.next &&
-        tcb.receive_sequence.next < segment.sequence_number + (segment.data.len() as u32) {
+    } else if segment.sequence_number < tcb.receive_sequence.next
+        && tcb.receive_sequence.next < segment.sequence_number + (segment.data.len() as u32)
+    {
         let acked_data = tcb.receive_sequence.next - segment.sequence_number;
         let new_data = &segment.data[(acked_data as usize)..];
         new_buffer.extend_from_slice(new_data);
@@ -60,7 +59,7 @@ pub fn handle_established_receive(tcb: &TCB, segment: &TCP) -> Result<TCPStateCh
         checksum: 0,
         urgent_pointer: 0,
         options,
-        data: vec![]
+        data: vec![],
     };
 
     Ok(TCPStateChange::WithResponse(new_tcb, new_tcp))

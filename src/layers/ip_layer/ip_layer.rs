@@ -1,4 +1,4 @@
-use crate::common::response_error::ResponseError;
+use crate::common::proto::Proto;
 use crate::layers::ip_layer::ipv4::ipv4::IPv4;
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -16,7 +16,7 @@ impl Display for IPLayerProtocol {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             IPLayerProtocol::IPv4(ipv4) => write!(f, "ipv4: {}", ipv4),
-            IPLayerProtocol::Other(bytes) => write!(f, "other: {:?}", bytes),
+            IPLayerProtocol::Other(bytes) => write!(f, "other: {:x?}", bytes),
             IPLayerProtocol::IPv6(ipv6) => write!(f, "ipv6: {}", ipv6),
         }
     }
@@ -34,11 +34,23 @@ impl IPLayerProtocol {
         }
     }
 
-    pub fn serialize(&self) -> Result<Vec<u8>, ResponseError> {
+    pub fn serialize(&self) -> eyre::Result<Vec<u8>> {
         match self {
             IPLayerProtocol::IPv4(ipv4) => ipv4.serialize(),
             IPLayerProtocol::Other(data) => Ok(data.to_vec()),
-            IPLayerProtocol::IPv6(ipv6) => todo!(),
+            IPLayerProtocol::IPv6(_ipv6) => todo!(),
         }
+    }
+}
+
+impl Into<IPLayerProtocol> for IPv4 {
+    fn into(self) -> IPLayerProtocol {
+        IPLayerProtocol::IPv4(self)
+    }
+}
+
+impl Into<IPLayerProtocol> for IPv6 {
+    fn into(self) -> IPLayerProtocol {
+        IPLayerProtocol::IPv6(self)
     }
 }

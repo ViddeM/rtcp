@@ -1,6 +1,6 @@
 use crate::common::parsing::U6;
-use std::fmt::{Display, Formatter};
 use std::fmt;
+use std::fmt::{Display, Formatter};
 
 const DELIMITER: &str = ", ";
 const URG_BIT: u8 = 0b00100000;
@@ -24,14 +24,26 @@ impl ControlBits {
     fn get_flags_as_vec(&self) -> Vec<&str> {
         let mut flags = Vec::new();
 
-        if self.urg {flags.push("URG")}
-        if self.ack {flags.push("ACK")}
-        if self.psh {flags.push("PSH")}
-        if self.rst {flags.push("RST")}
-        if self.syn {flags.push("SYN")}
-        if self.fin {flags.push("FIN")}
+        if self.urg {
+            flags.push("URG")
+        }
+        if self.ack {
+            flags.push("ACK")
+        }
+        if self.psh {
+            flags.push("PSH")
+        }
+        if self.rst {
+            flags.push("RST")
+        }
+        if self.syn {
+            flags.push("SYN")
+        }
+        if self.fin {
+            flags.push("FIN")
+        }
 
-        return flags
+        return flags;
     }
 
     pub fn to_short_string(&self) -> String {
@@ -45,7 +57,7 @@ impl ControlBits {
             }
         }
 
-        return str
+        return str;
     }
 
     pub fn parse(num: U6) -> ControlBits {
@@ -61,13 +73,25 @@ impl ControlBits {
 
     pub fn serialize(&self) -> U6 {
         let mut num = 0;
-        if self.urg { num = num | URG_BIT }
-        if self.ack { num = num | ACK_BIT }
-        if self.psh { num = num | PSH_BIT }
-        if self.rst { num = num | RST_BIT }
-        if self.syn { num = num | SYN_BIT }
-        if self.fin { num = num | FIN_BIT }
-        return num
+        if self.urg {
+            num = num | URG_BIT
+        }
+        if self.ack {
+            num = num | ACK_BIT
+        }
+        if self.psh {
+            num = num | PSH_BIT
+        }
+        if self.rst {
+            num = num | RST_BIT
+        }
+        if self.syn {
+            num = num | SYN_BIT
+        }
+        if self.fin {
+            num = num | FIN_BIT
+        }
+        return num;
     }
 
     pub fn get_syn() -> ControlBits {
@@ -77,7 +101,7 @@ impl ControlBits {
             psh: false,
             rst: false,
             syn: true,
-            fin: false
+            fin: false,
         }
     }
 
@@ -88,7 +112,7 @@ impl ControlBits {
             psh: false,
             rst: false,
             syn: true,
-            fin: false
+            fin: false,
         }
     }
 
@@ -99,7 +123,7 @@ impl ControlBits {
             psh: false,
             rst: false,
             syn: false,
-            fin: false
+            fin: false,
         }
     }
 }
@@ -119,3 +143,4 @@ impl Display for ControlBits {
         write!(f, "{{ {} }}", bits)
     }
 }
+

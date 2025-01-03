@@ -1,9 +1,12 @@
+use colored::Colorize;
+use eyre::{Context, ContextCompat};
+
 use crate::common::arithmetics::calculate_ones_complement_sum;
 use crate::common::formatting::indent_string;
 use crate::common::parsing::{read_u16, read_u32, read_vec, U4, U6};
-use crate::common::response_error::ResponseError;
-use crate::layers::ip_layer::ipv4::ip_address::IPAddress;
-use crate::layers::ip_layer::ipv4::ip_protocol::Protocol;
+use crate::common::proto::Proto;
+use crate::layers::ip_layer::ip_protocol::Protocol;
+use crate::layers::ip_layer::IPAddress;
 use crate::layers::transport_layer::tcp::control_bits::ControlBits;
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -28,52 +31,52 @@ pub struct TCP {
 // i.e. the entire header excluding any options & padding.
 const TCP_MIN_HEADER_LENGTH: U4 = 5;
 
-impl TCP {
-    pub fn to_short_string(&self) -> String {
+impl Proto for TCP {
+    fn to_short_string(&self) -> String {
         format!(
             ":{} → :{} [{}] {}b",
-            self.src_port,
-            self.dst_port,
+            self.src_port.to_string().blue(),
+            self.dst_port.to_string().green(),
             self.control_bits.to_short_string(),
-            self.data.len()
+            self.data.len().to_string().green(),
         )
     }
 
-    pub fn parse(buf: &mut &[u8]) -> Option<TCP> {
+    fn parse(buf: &mut &[u8]) -> eyre::Result<Self> {
         let offset_reserved_control_bits;
         let data_offset: U4;
-        Some(TCP {
-            src_port: read_u16(buf)?,
-            dst_port: read_u16(buf)?,
-            sequence_number: read_u32(buf)?,
-            acknowledgement_number: read_u32(buf)?,
+        Ok(TCP {
+            src_port: read_u16(buf).wrap_err("reading source port")?,
+            dst_port: read_u16(buf).wrap_err("reading destination port")?,
+            sequence_number: read_u32(buf).wrap_err("reading sequence number")?,
+            acknowledgement_number: read_u32(buf).wrap_err("ack number")?,
             data_offset: {
-                offset_reserved_control_bits = read_u16(buf)?;
+                offset_reserved_control_bits =
+                    read_u16(buf).wrap_err("reading offset reserved control bits")?;
                 data_offset = ((offset_reserved_control_bits & 0xF000) >> 12) as U4;
                 if data_offset < TCP_MIN_HEADER_LENGTH {
-                    eprintln!(
+                    eyre::bail!(
                         "Invalid data_offset number: {} < {}",
-                        data_offset, TCP_MIN_HEADER_LENGTH
+                        data_offset,
+                        TCP_MIN_HEADER_LENGTH
                     );
-                    return None;
                 }
                 data_offset
             },
             reserved: ((offset_reserved_control_bits & 0x0FC0) >> 6) as U6,
             control_bits: ControlBits::parse((offset_reserved_control_bits & 0x003F) as U6),
-            window: read_u16(buf)?,
-            checksum: read_u16(buf)?,
-            urgent_pointer: read_u16(buf)?,
-            options: read_vec(buf, (data_offset - TCP_MIN_HEADER_LENGTH) as usize)?,
+            window: read_u16(buf).wrap_err("reading window")?,
+            checksum: read_u16(buf).wrap_err("reading checksum")?,
+            urgent_pointer: read_u16(buf).wrap_err("reading urgent pointer")?,
+            options: read_vec(buf, (data_offset - TCP_MIN_HEADER_LENGTH) as usize)
+                .wrap_err("reading options")?,
             data: buf.to_vec(),
         })
     }
+}
 
-    pub fn serialize(
-        &self,
-        src_adr: &IPAddress,
-        dst_adr: &IPAddress,
-    ) -> Result<Vec<u8>, ResponseError> {
+impl TCP {
+    pub fn serialize(&self, src_adr: &IPAddress, dst_adr: &IPAddress) -> eyre::Result<Vec<u8>> {
         let mut bytes: Vec<u8> = Vec::new();
         bytes.extend_from_slice(&self.src_port.to_be_bytes());
         bytes.extend_from_slice(&self.dst_port.to_be_bytes());
@@ -95,34 +98,38 @@ impl TCP {
     }
 
     // Calculates the full length of this TCP packet, i.e. Header + Data
-    pub fn len(&self) -> Result<u16, ResponseError> {
+    pub fn len(&self) -> eyre::Result<u16> {
         let header_len = (self.data_offset as u16)
             .checked_mul(4) // Convert no 32bit words to no bytes.
-            .ok_or(ResponseError::DataTooLarge)?
+            .wrap_err("header len is too large")?
             + (self.options.len() as u16);
 
         let data_len = self.data.len() as u16;
 
         header_len
             .checked_add(data_len)
-            .ok_or(ResponseError::DataTooLarge)
+            .wrap_err("header + data len too large")
     }
 
     pub fn calculate_checksum(
         &self,
         src_adr: &IPAddress,
         dst_adr: &IPAddress,
-    ) -> Result<u16, ResponseError> {
+    ) -> eyre::Result<u16> {
         let mut num: Vec<u16> = Vec::new();
 
-        // 96 bit Pseudo header
-        num.push((src_adr.0 >> 16) as u16);
-        num.push(src_adr.0 as u16);
-        num.push((dst_adr.0 >> 16) as u16);
-        num.push(dst_adr.0 as u16);
+        for s in src_adr.get_bytes().chunks_exact(2) {
+            num.push(u16::from_be_bytes([s[0], s[1]]));
+        }
+
+        for d in dst_adr.get_bytes().chunks_exact(2) {
+            num.push(u16::from_be_bytes([d[0], d[1]]));
+        }
+
+        // Pseudo header (96 bit for ipv4)
         num.push(0 as u16); // Zeros -- Is this really correct?
         num.push(Protocol::TCP.serialize() as u16); // Protocol
-        num.push(self.len()?); // Full length
+        num.push(self.len().wrap_err("calculating length")?); // Full length
 
         // Actual data for checksum
         num.push(self.src_port);

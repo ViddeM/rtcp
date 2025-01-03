@@ -1,16 +1,12 @@
+use crate::layers::transport_layer::tcp::receive_sequence::ReceiveSequence;
+use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
+use crate::layers::transport_layer::tcp::states::tcp_state::TcpState;
 use crate::layers::transport_layer::tcp::tcb::TCB;
 use crate::layers::transport_layer::tcp::tcp::TCP;
-use crate::layers::transport_layer::tcp::tcp_error::TcpError;
-use crate::layers::transport_layer::tcp::send_sequence::SendSequence;
-use crate::layers::transport_layer::tcp::receive_sequence::ReceiveSequence;
-use crate::layers::transport_layer::tcp::states::tcp_state::TcpState;
-use crate::layers::transport_layer::tcp::states::state_change::TCPStateChange;
 
-
-pub fn handle_syn_received_receive(tcb: &TCB, segment: &TCP) -> Result<TCPStateChange, TcpError>{
+pub fn handle_syn_received_receive(tcb: &TCB, segment: &TCP) -> eyre::Result<TCPStateChange> {
     if !segment.control_bits.ack {
-        eprintln!("Missing ack flag");
-        return Err(TcpError::UnexpectedConnection)
+        eyre::bail!("missing ack flag");
     }
 
     // TODO: handle if they sent data with the ack.
